@@ -1,9 +1,19 @@
 from fastapi import APIRouter, Query
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
-from app.services.web_search_service import web_search_service, OFFICIAL_HEALTH_PORTALS
+from app.services.web_search_service import web_search_service
+
+OFFICIAL_HEALTH_PORTALS = [
+    {"name": "สำนักงานหลักประกันสุขภาพแห่งชาติ (สปสช.)", "domain": "nhso.go.th", "hotline": "1330"},
+    {"name": "กระทรวงการพัฒนาสังคมและความมั่นคงของมนุษย์ (พม.)", "domain": "m-society.go.th", "hotline": "1300"},
+    {"name": "สำนักงานประกันสังคม (สปส.)", "domain": "sso.go.th", "hotline": "1506"},
+    {"name": "กรมบัญชีกลาง (สวัสดิการข้าราชการ)", "domain": "cgd.go.th", "hotline": "02-270-6400"},
+    {"name": "สถาบันการแพทย์ฉุกเฉินแห่งชาติ (สพฉ.)", "domain": "niems.go.th", "hotline": "1669"},
+    {"name": "กองทุนหลักประกันสุขภาพระดับท้องถิ่น (กปท.)", "domain": "localhealth.nhso.go.th", "hotline": "1330"},
+]
 
 router = APIRouter()
+
 
 class SearchResultItem(BaseModel):
     title: str
