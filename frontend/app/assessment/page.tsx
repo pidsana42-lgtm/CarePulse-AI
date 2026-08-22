@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { submitAssessment } from '@/lib/api';
 import { AssessmentInput } from '@/types';
 import { ShieldCheck, UserCheck, Stethoscope, AlertCircle, ArrowRight } from 'lucide-react';
+import { SiteHeader } from '@/components/site-header';
+import { SiteFooter } from '@/components/site-footer';
 
 export default function AssessmentPage() {
   const router = useRouter();
@@ -47,11 +49,13 @@ export default function AssessmentPage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      <div className="text-center">
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900">
-          แบบประเมินสิทธิการรักษาพยาบาล
-        </h1>
+    <div className="flex min-h-screen flex-col">
+      <SiteHeader />
+      <main className="flex-1 py-10 px-4 sm:px-6 max-w-3xl mx-auto w-full space-y-6">
+        <div className="text-center">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground">
+            แบบประเมินสิทธิการรักษาพยาบาล
+          </h1>
         <p className="text-slate-600 mt-1 text-base">
           กรอกข้อมูลง่ายๆ เพียงไม่กี่ข้อ เพื่อค้นหาสิทธิประโยชน์ที่ท่านได้รับฟรี
         </p>
@@ -165,7 +169,7 @@ export default function AssessmentPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full flex items-center justify-center gap-2 py-4 px-6 bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-extrabold text-xl rounded-xl shadow-lg shadow-emerald-600/30 transition-all"
+          className="w-full flex items-center justify-center gap-2 py-4 px-6 bg-primary hover:opacity-90 active:scale-98 text-primary-foreground font-extrabold text-xl rounded-xl shadow-lg transition-all"
         >
           {loading ? (
             <span>กำลังคำนวณสิทธิการรักษา...</span>
@@ -177,6 +181,8 @@ export default function AssessmentPage() {
           )}
         </button>
       </form>
+      </main>
+      <SiteFooter />
     </div>
   );
 }

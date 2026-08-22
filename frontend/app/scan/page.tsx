@@ -7,6 +7,9 @@ import { uploadDocument } from '@/lib/api';
 import { DocumentScanResult } from '@/types';
 import { ShieldCheck, CheckCircle, ArrowRight, FileCheck } from 'lucide-react';
 
+import { SiteHeader } from '@/components/site-header';
+import { SiteFooter } from '@/components/site-footer';
+
 export default function ScanPage() {
   const router = useRouter();
   const [docType, setDocType] = useState<string>('id_card');
@@ -31,11 +34,13 @@ export default function ScanPage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      <div className="text-center">
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900">
-          ถ่ายรูปเอกสารเพื่อตรวจสอบสิทธิ
-        </h1>
+    <div className="flex min-h-screen flex-col">
+      <SiteHeader />
+      <main className="flex-1 py-10 px-4 sm:px-6 max-w-3xl mx-auto w-full space-y-6">
+        <div className="text-center">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground">
+            ถ่ายรูปเอกสารเพื่อตรวจสอบสิทธิ
+          </h1>
         <p className="text-slate-600 mt-1 text-base">
           ใช้งานง่ายผ่านกล้องมือถือ ระบบจะทำการ Masking ข้อมูลส่วนตัวอัตโนมัติ (PDPA)
         </p>
@@ -106,6 +111,8 @@ export default function ScanPage() {
           </button>
         </div>
       )}
+      </main>
+      <SiteFooter />
     </div>
   );
 }
