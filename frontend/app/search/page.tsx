@@ -1,289 +1,336 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { SiteHeader } from '@/components/site-header';
 import { SiteFooter } from '@/components/site-footer';
-import { searchWelfareAndPolicies, SearchResultItem } from '@/lib/api';
+import { streamAiAdvisor, searchWelfareAndPolicies, SearchResultItem, ChatMessageItem } from '@/lib/api';
 import {
-  Search,
-  Globe,
-  Building2,
-  PhoneCall,
-  ExternalLink,
-  ShieldCheck,
+  Send,
   Sparkles,
   Loader2,
-  BookOpen,
-  Filter,
-  CheckCircle2
+  ExternalLink,
+  Globe,
+  Bot,
+  User,
+  RefreshCw,
+  CheckCircle2,
+  ChevronRight,
 } from 'lucide-react';
 
-const POPULAR_QUERIES = [
-  'เบิกผ้าอ้อมผู้ใหญ่ กองทุนสุขภาพตำบล',
-  'ขอรับเตียงผู้ป่วย / รถเข็น กระทรวง พม.',
-  'สิทธิ 30 บาทรักษาทุกที่ ใช้ต่างจังหวัด',
-  'ทันตกรรมประกันสังคม 900 บาท',
-  'สิทธิฉุกเฉินวิกฤต UCEP 72 ชั่วโมง',
-  'เครื่องผลิตออกซิเจน ผู้ป่วยติดเตียง',
-  'ฟอกไตฟรี สปสช.',
+const EXAMPLE_PROMPTS = [
+  'แม่ผมติดเตียง อยากขอเตียงผู้ป่วยฟรีต้องทำยังไง',
+  'ผมใช้บัตรทอง ไปหาหมอโรงพยาบาลต่างจังหวัดได้ไหม',
+  'อยากขอผ้าอ้อมผู้ใหญ่ให้ผู้สูงอายุที่บ้าน ติดต่อใคร',
+  'ผู้พิการมีสิทธิ์ขอรถเข็นฟรีจากรัฐไหม',
+  'ประกันสังคมทำฟันฟรีได้กี่บาทต่อปี',
+  'ฉุกเฉินวิกฤต UCEP คืออะไร ใช้ที่ไหนได้บ้าง',
 ];
 
-const AGENCY_FILTERS = [
-  { id: 'all', label: 'ทั้งหมดทุกกระทรวง' },
-  { id: 'สปสช', label: 'สปสช. (บัตรทอง)' },
-  { id: 'พม', label: 'กระทรวง พม. (สวัสดิการ/กายอุปกรณ์)' },
-  { id: 'กองทุน', label: 'กองทุนสุขภาพตำบล (กปท.)' },
-  { id: 'ประกันสังคม', label: 'ประกันสังคม' },
-  { id: 'ข้าราชการ', label: 'กรมบัญชีกลาง' },
-];
+interface AiMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  webSources?: Array<{ title: string; url: string; snippet: string }>;
+  searchResults?: SearchResultItem[];
+  isStreaming?: boolean;
+}
 
 export default function SearchPage() {
-  const [query, setQuery] = useState('');
-  const [selectedAgency, setSelectedAgency] = useState('all');
-  const [results, setResults] = useState<SearchResultItem[]>([]);
-  const [portals, setPortals] = useState<Array<{ name: string; domain: string; hotline: string }>>([]);
+  const [messages, setMessages] = useState<AiMessage[]>([]);
+  const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [hasSearched, setHasSearched] = useState(false);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const handleSearch = async (searchQuery?: string, agency?: string) => {
-    const q = (searchQuery !== undefined ? searchQuery : query).trim();
-    const ag = (agency !== undefined ? agency : selectedAgency);
-    if (!q) return;
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
+  // Auto-resize textarea
+  useEffect(() => {
+    const ta = textareaRef.current;
+    if (ta) {
+      ta.style.height = 'auto';
+      ta.style.height = `${Math.min(ta.scrollHeight, 160)}px`;
+    }
+  }, [input]);
+
+  const handleSubmit = async (text?: string) => {
+    const query = (text ?? input).trim();
+    if (!query || loading) return;
+
+    const userMsg: AiMessage = { role: 'user', content: query };
+    const assistantMsg: AiMessage = { role: 'assistant', content: '', isStreaming: true };
+
+    setMessages((prev) => [...prev, userMsg, assistantMsg]);
+    setInput('');
     setLoading(true);
-    setHasSearched(true);
 
-    try {
-      const data = await searchWelfareAndPolicies(q, ag === 'all' ? undefined : ag);
-      setResults(data.results);
-      setPortals(data.official_portals || []);
-    } catch (err) {
-      console.error('Search error:', err);
-    } finally {
-      setLoading(false);
+    const chatHistory: ChatMessageItem[] = [...messages, userMsg].map((m) => ({
+      role: m.role,
+      content: m.content,
+    }));
+
+    // Run web search in parallel
+    let searchResults: SearchResultItem[] = [];
+    searchWelfareAndPolicies(query).then((res) => {
+      searchResults = res.results.slice(0, 5);
+      setMessages((prev) => {
+        const updated = [...prev];
+        const last = updated[updated.length - 1];
+        if (last.role === 'assistant') {
+          last.searchResults = searchResults;
+        }
+        return updated;
+      });
+    }).catch(() => {});
+
+    // Stream AI response
+    await streamAiAdvisor(
+      chatHistory,
+      (delta) => {
+        setMessages((prev) => {
+          const updated = [...prev];
+          const last = updated[updated.length - 1];
+          if (last.role === 'assistant') {
+            last.content += delta;
+          }
+          return [...updated];
+        });
+      },
+      () => {
+        setMessages((prev) => {
+          const updated = [...prev];
+          const last = updated[updated.length - 1];
+          if (last.role === 'assistant') {
+            last.isStreaming = false;
+            last.searchResults = searchResults;
+          }
+          return [...updated];
+        });
+        setLoading(false);
+      },
+      (err) => {
+        setMessages((prev) => {
+          const updated = [...prev];
+          const last = updated[updated.length - 1];
+          if (last.role === 'assistant') {
+            last.content = `เกิดข้อผิดพลาด: ${err}`;
+            last.isStreaming = false;
+          }
+          return [...updated];
+        });
+        setLoading(false);
+      },
+      (sources) => {
+        setMessages((prev) => {
+          const updated = [...prev];
+          const last = updated[updated.length - 1];
+          if (last.role === 'assistant') {
+            last.webSources = sources;
+          }
+          return [...updated];
+        });
+      }
+    );
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit();
     }
   };
 
-  // Perform default initial search for high-value welfare
-  useEffect(() => {
-    handleSearch('สิทธิประโยชน์ สปสช พม ผ้าอ้อมผู้ใหญ่ กายอุปกรณ์');
-  }, []);
+  const isEmptyState = messages.length === 0;
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50/50">
+    <div className="flex min-h-screen flex-col bg-slate-50">
       <SiteHeader />
-      <main className="flex-1 py-10 px-4 sm:px-6 max-w-5xl mx-auto w-full space-y-8 pb-20">
-        {/* Header Title */}
-        <div className="text-center space-y-2 max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-2 bg-emerald-100 text-emerald-900 px-3.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
-            <Globe className="w-4 h-4 text-emerald-700" />
-            <span>เครื่องมือค้นหาข้อมูลสิทธิ & ระเบียบราชการออนไลน์ (Web Search)</span>
-          </div>
-          <h1 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
-            ค้นหาสิทธิสุขภาพ กายอุปกรณ์ และสวัสดิการภาครัฐ
-          </h1>
-          <p className="text-slate-600 text-sm sm:text-base font-medium">
-            ค้นหาข้อมูลระเบียบและสิทธิประโยชน์จาก สปสช., กระทรวง พม., กองทุนสุขภาพตำบล และประกันสังคม ได้ทันทีโดยไม่ต้องสแกนบัตร
-          </p>
-        </div>
 
-        {/* Search Box */}
-        <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200 shadow-lg space-y-4">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleSearch();
-            }}
-            className="flex flex-col sm:flex-row gap-2.5"
-          >
-            <div className="relative flex-1">
-              <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="พิมพ์สิ่งที่ต้องการค้นหา เช่น ผ้าอ้อมผู้ใหญ่, เตียงผู้ป่วย, ทำฟันฟรี, สิทธิ 30 บาท..."
-                className="w-full pl-12 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-base text-slate-900 focus:outline-none focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex items-center justify-center gap-2 bg-primary hover:opacity-90 active:scale-98 text-primary-foreground font-bold px-7 py-3.5 rounded-2xl text-base shadow-md transition-all shrink-0"
-            >
-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
-              <span>ค้นหาข้อมูล</span>
-            </button>
-          </form>
+      <main className="flex-1 flex flex-col max-w-3xl mx-auto w-full px-4 sm:px-6 pb-6">
 
-          {/* Quick Keyword Pills */}
-          <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
-            <span className="text-slate-500 font-semibold flex items-center gap-1">
-              <Sparkles className="w-3.5 h-3.5 text-amber-500" /> คำค้นยอดนิยม:
-            </span>
-            {POPULAR_QUERIES.map((keyword, i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={() => {
-                  setQuery(keyword);
-                  handleSearch(keyword);
-                }}
-                className="bg-slate-100 hover:bg-emerald-50 hover:text-emerald-800 text-slate-700 font-medium px-3 py-1.5 rounded-xl border border-slate-200 transition-all cursor-pointer"
-              >
-                {keyword}
-              </button>
-            ))}
-          </div>
-
-          {/* Filter by Agency */}
-          <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 text-xs">
-            <span className="text-slate-500 font-semibold flex items-center gap-1">
-              <Filter className="w-3.5 h-3.5 text-slate-400" /> กรองตามหน่วยงาน:
-            </span>
-            {AGENCY_FILTERS.map((f) => (
-              <button
-                key={f.id}
-                type="button"
-                onClick={() => {
-                  setSelectedAgency(f.id);
-                  handleSearch(undefined, f.id);
-                }}
-                className={`px-3 py-1.5 rounded-xl font-bold transition-all ${
-                  selectedAgency === f.id
-                    ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Results Section */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
-              <BookOpen className="w-5 h-5 text-emerald-600" />
-              ผลการค้นหาสิทธิและระเบียบภาครัฐ ({results.length} รายการ)
-            </h2>
-          </div>
-
-          {loading ? (
-            <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 shadow-sm space-y-3">
-              <Loader2 className="w-8 h-8 animate-spin text-emerald-600 mx-auto" />
-              <p className="text-slate-600 font-semibold">กำลังดึงข้อมูลสิทธิและระเบียบราชการออนไลน์...</p>
-            </div>
-          ) : results.length === 0 && hasSearched ? (
-            <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 shadow-sm space-y-2">
-              <p className="text-lg font-bold text-slate-800">ไม่พบผลการค้นหาตรงกับคำว่า &quot;{query}&quot;</p>
-              <p className="text-sm text-slate-500">
-                ลองใช้คำค้นหาที่กว้างขึ้น เช่น &quot;สิทธิบัตรทอง&quot;, &quot;ผ้าอ้อมผู้ใหญ่&quot;, &quot;กายอุปกรณ์&quot;
+        {/* Empty State */}
+        {isEmptyState && (
+          <div className="flex-1 flex flex-col items-center justify-center gap-8 py-16 text-center">
+            <div className="space-y-3">
+              <div className="flex size-16 items-center justify-center rounded-2xl bg-emerald-600 mx-auto shadow-lg">
+                <Bot className="size-9 text-white" />
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                อธิบายความต้องการของคุณ
+              </h1>
+              <p className="text-slate-500 text-sm sm:text-base max-w-md font-medium leading-relaxed">
+                AI จะค้นหาสิทธิสุขภาพ สวัสดิการ และระเบียบราชการที่เกี่ยวข้องให้คุณ พร้อมแหล่งอ้างอิงจากเว็บทางการ
               </p>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-4">
-              {results.map((res, idx) => (
-                <div
-                  key={idx}
-                  className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs hover:border-emerald-300 hover:shadow-md transition-all space-y-2.5"
+
+            {/* Example Prompts */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full max-w-xl">
+              {EXAMPLE_PROMPTS.map((prompt, i) => (
+                <button
+                  key={i}
+                  onClick={() => handleSubmit(prompt)}
+                  className="flex items-start gap-2.5 text-left bg-white border border-slate-200 hover:border-emerald-400 hover:bg-emerald-50 rounded-2xl p-3.5 text-sm text-slate-700 font-medium transition-all group shadow-xs"
                 >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-extrabold px-3 py-1 rounded-full">
-                        {res.agency}
-                      </span>
-                      {res.verified && (
-                        <span className="flex items-center gap-1 text-teal-700 text-xs font-semibold bg-teal-50 px-2.5 py-0.5 rounded-md">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-teal-600" /> ข้อมูลระเบียบทางการ
-                        </span>
-                      )}
-                    </div>
-                    <span className="text-xs text-slate-400 font-medium">{res.source}</span>
-                  </div>
-
-                  <h3 className="text-lg font-bold text-slate-900 leading-snug">
-                    {res.title}
-                  </h3>
-
-                  <p className="text-sm sm:text-base text-slate-600 leading-relaxed font-medium">
-                    {res.snippet}
-                  </p>
-
-                  <div className="pt-2 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 text-xs">
-                    <span className="text-slate-500">
-                      แหล่งอ้างอิง: <strong className="text-slate-700">{res.source}</strong>
-                    </span>
-                    {res.url && (
-                      <a
-                        href={res.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-emerald-700 hover:text-emerald-900 font-bold"
-                      >
-                        <span>ไปยังเว็บทางการ</span>
-                        <ExternalLink className="w-3.5 h-3.5" />
-                      </a>
-                    )}
-                  </div>
-                </div>
+                  <ChevronRight className="w-4 h-4 mt-0.5 text-emerald-500 shrink-0 group-hover:text-emerald-700" />
+                  {prompt}
+                </button>
               ))}
             </div>
-          )}
-        </div>
-
-        {/* Official Healthcare Portals Directory */}
-        <div className="bg-slate-900 text-white rounded-3xl p-6 sm:p-7 shadow-lg space-y-4">
-          <div>
-            <h3 className="text-lg font-extrabold flex items-center gap-2">
-              <Globe className="w-5 h-5 text-emerald-400" />
-              เว็บไซต์และสายด่วนทางการของหน่วยงานภาครัฐ (Official Government Channels)
-            </h3>
-            <p className="text-xs sm:text-sm text-slate-300 mt-1">
-              เข้าถึงพอร์ทัลทางการเพื่อตรวจสอบสิทธิและระเบียบราชการฉบับเต็ม
-            </p>
           </div>
+        )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-            {portals.length > 0
-              ? portals.map((p, i) => (
-                  <a
-                    key={i}
-                    href={`https://www.${p.domain}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="bg-white/10 hover:bg-white/20 p-4 rounded-2xl border border-white/10 transition-all flex flex-col justify-between"
-                  >
-                    <div>
-                      <span className="text-xs text-emerald-300 font-bold block">{p.name}</span>
-                      <span className="text-xs text-slate-400 mt-0.5 block">{p.domain}</span>
+        {/* Message Thread */}
+        {!isEmptyState && (
+          <div className="flex-1 py-6 space-y-6">
+            {messages.map((msg, idx) => (
+              <div key={idx}>
+                {msg.role === 'user' ? (
+                  /* User Bubble */
+                  <div className="flex justify-end">
+                    <div className="flex items-end gap-2 max-w-[85%]">
+                      <div className="bg-emerald-600 text-white rounded-3xl rounded-br-lg px-5 py-3.5 text-sm font-medium leading-relaxed shadow-sm">
+                        {msg.content}
+                      </div>
+                      <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-slate-200">
+                        <User className="size-4 text-slate-600" />
+                      </div>
                     </div>
-                    <div className="mt-3 flex items-center justify-between text-xs font-semibold">
-                      <span className="text-emerald-400">สายด่วน {p.hotline}</span>
-                      <ExternalLink className="w-3.5 h-3.5 text-slate-300" />
+                  </div>
+                ) : (
+                  /* Assistant Bubble */
+                  <div className="flex items-start gap-2.5">
+                    <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-emerald-600 shadow-sm mt-0.5">
+                      <Bot className="size-4 text-white" />
                     </div>
-                  </a>
-                ))
-              : (
-                  <>
-                    <div className="bg-white/10 p-4 rounded-2xl border border-white/10">
-                      <span className="text-xs text-emerald-300 font-bold block">สปสช. (บัตรทอง 30 บาท)</span>
-                      <span className="text-xs text-slate-400">nhso.go.th — สายด่วน 1330</span>
+                    <div className="flex-1 space-y-3 max-w-[92%]">
+                      {/* AI Text */}
+                      <div className="bg-white border border-slate-200 rounded-3xl rounded-tl-lg px-5 py-4 text-sm text-slate-800 leading-relaxed shadow-xs">
+                        {msg.content ? (
+                          <p className="whitespace-pre-line">{msg.content}</p>
+                        ) : msg.isStreaming ? (
+                          <span className="flex items-center gap-2 text-slate-400">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            กำลังค้นหาและวิเคราะห์...
+                          </span>
+                        ) : null}
+                        {msg.isStreaming && msg.content && (
+                          <span className="inline-block w-0.5 h-4 bg-emerald-500 animate-pulse ml-0.5 align-middle" />
+                        )}
+                      </div>
+
+                      {/* Web Sources from AI stream */}
+                      {msg.webSources && msg.webSources.length > 0 && (
+                        <div className="space-y-1.5">
+                          <p className="text-xs font-bold text-slate-500 flex items-center gap-1 px-1">
+                            <Globe className="w-3.5 h-3.5 text-emerald-600" />
+                            แหล่งข้อมูลที่ AI ใช้ค้นหา:
+                          </p>
+                          {msg.webSources.map((src, si) => (
+                            <a
+                              key={si}
+                              href={src.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-start gap-2.5 bg-white border border-slate-200 hover:border-emerald-300 rounded-2xl p-3 text-xs transition-all group shadow-xs"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5 text-emerald-600 mt-0.5 shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <span className="font-bold text-slate-800 block truncate">{src.title}</span>
+                                <span className="text-slate-400 line-clamp-2 mt-0.5">{src.snippet}</span>
+                              </div>
+                            </a>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Live Search Results */}
+                      {!msg.isStreaming && msg.searchResults && msg.searchResults.length > 0 && (
+                        <div className="space-y-1.5">
+                          <p className="text-xs font-bold text-slate-500 flex items-center gap-1 px-1">
+                            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                            เว็บไซต์ทางการที่เกี่ยวข้อง ({msg.searchResults.length} รายการ):
+                          </p>
+                          {msg.searchResults.map((res, ri) => (
+                            <a
+                              key={ri}
+                              href={res.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-start gap-2.5 bg-white border border-slate-200 hover:border-emerald-300 rounded-2xl p-3.5 transition-all shadow-xs group"
+                            >
+                              <div className="flex-1 min-w-0 space-y-0.5">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="text-[10px] font-extrabold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
+                                    {res.agency}
+                                  </span>
+                                  {res.verified && (
+                                    <span className="flex items-center gap-0.5 text-[10px] font-semibold text-teal-700">
+                                      <CheckCircle2 className="w-3 h-3" /> ทางการ
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-xs font-bold text-slate-800 line-clamp-1">{res.title}</p>
+                                <p className="text-xs text-slate-500 line-clamp-2">{res.snippet}</p>
+                              </div>
+                              <ExternalLink className="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-600 shrink-0 mt-1 transition-colors" />
+                            </a>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                    <div className="bg-white/10 p-4 rounded-2xl border border-white/10">
-                      <span className="text-xs text-teal-300 font-bold block">กระทรวง พม. (สวัสดิการ/คนพิการ)</span>
-                      <span className="text-xs text-slate-400">m-society.go.th — สายด่วน 1300</span>
-                    </div>
-                    <div className="bg-white/10 p-4 rounded-2xl border border-white/10">
-                      <span className="text-xs text-blue-300 font-bold block">สำนักงานประกันสังคม</span>
-                      <span className="text-xs text-slate-400">sso.go.th — สายด่วน 1506</span>
-                    </div>
-                  </>
+                  </div>
                 )}
+              </div>
+            ))}
+            <div ref={bottomRef} />
           </div>
+        )}
+
+        {/* Input Box — sticky bottom */}
+        <div className={`${isEmptyState ? 'mt-0' : 'mt-4'} sticky bottom-4`}>
+          {/* Reset button (only when there are messages) */}
+          {!isEmptyState && (
+            <div className="flex justify-center mb-2">
+              <button
+                onClick={() => setMessages([])}
+                className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-700 font-semibold transition-colors"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                เริ่มการสนทนาใหม่
+              </button>
+            </div>
+          )}
+
+          <div className="bg-white border border-slate-200 rounded-3xl shadow-lg p-3 flex items-end gap-2.5">
+            <textarea
+              ref={textareaRef}
+              rows={1}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="อธิบายความต้องการของคุณที่นี่... เช่น แม่ติดเตียงอยากขอเตียงผู้ป่วยฟรี"
+              className="flex-1 resize-none bg-transparent text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none leading-relaxed py-1.5 px-2 font-medium max-h-40"
+              disabled={loading}
+            />
+            <button
+              onClick={() => handleSubmit()}
+              disabled={loading || !input.trim()}
+              className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm"
+            >
+              {loading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Send className="w-4 h-4" />
+              )}
+            </button>
+          </div>
+          <p className="text-center text-[11px] text-slate-400 mt-1.5 font-medium">
+            กด Enter ส่ง · Shift+Enter ขึ้นบรรทัดใหม่ · AI ค้นหาจากเว็บทางการแบบ Real-time
+          </p>
         </div>
       </main>
+
       <SiteFooter />
     </div>
   );
