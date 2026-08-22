@@ -1,19 +1,9 @@
-import { ShieldCheck, Stethoscope, Globe, Phone, Sparkles, ArrowRight, CheckCircle2 } from 'lucide-react'
+import { ShieldCheck, Stethoscope, Phone, ArrowRight } from 'lucide-react'
 
 const STATS = [
   { value: '7+', label: 'กองทุนและหน่วยงานรัฐ' },
   { value: '30+', label: 'สิทธิประโยชน์ครอบคลุม' },
   { value: '120K+', label: 'บาทที่ประชาชนประหยัดได้/ปี' },
-]
-
-const BENEFITS = [
-  '📦 ผ้าอ้อมผู้ใหญ่ฟรี วันละ 3 ชิ้น (กปท.)',
-  '🛏️ เตียงผู้ป่วยปรับระดับ (พม.)',
-  '♿ รถเข็น Wheelchair (พม./สปสช.)',
-  '💨 เครื่องผลิตออกซิเจน (สปสช.)',
-  '🔬 ฟอกไตฟรี CAPD/HD (สปสช.)',
-  '🦷 ทันตกรรม 900 บาท/ปี (ประกันสังคม)',
-  '🚑 ฉุกเฉินวิกฤต UCEP 72 ชม. ทุก รพ.',
 ]
 
 const HOTLINES = [
@@ -67,15 +57,6 @@ export function Hero() {
               <div className="text-3xl font-black text-emerald-600">{s.value}</div>
               <div className="text-xs text-slate-500 font-semibold mt-0.5 leading-tight">{s.label}</div>
             </div>
-          ))}
-        </div>
-
-        {/* Benefit Pills */}
-        <div className="flex flex-wrap items-center justify-center gap-2 max-w-3xl">
-          {BENEFITS.map((b, i) => (
-            <span key={i} className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-xs sm:text-sm font-semibold text-slate-700 shadow-xs">
-              {b}
-            </span>
           ))}
         </div>
 
