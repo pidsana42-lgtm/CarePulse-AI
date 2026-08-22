@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from 'next'
 import { IBM_Plex_Sans_Thai } from 'next/font/google'
 import './globals.css'
 import AiAdvisor from '@/components/AiAdvisor'
+import PageTransition from '@/components/PageTransition'
 
 const ibmPlexSansThai = IBM_Plex_Sans_Thai({
   weight: ['300', '400', '500', '600', '700'],
@@ -49,11 +50,12 @@ export default function RootLayout({
   return (
     <html lang="th" className={`bg-background ${ibmPlexSansThai.variable}`}>
       <body className="font-sans antialiased">
-        {children}
+        <PageTransition>
+          {children}
+        </PageTransition>
         <AiAdvisor />
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>
   )
 }
-

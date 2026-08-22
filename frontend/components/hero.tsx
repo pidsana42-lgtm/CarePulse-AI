@@ -28,12 +28,6 @@ export function Hero() {
     <section className="border-b border-slate-200 bg-gradient-to-b from-slate-50 to-white">
       <div className="mx-auto flex w-full max-w-6xl flex-col items-center gap-10 px-4 py-16 text-center sm:px-6 md:py-24">
 
-        {/* Badge */}
-        <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-1.5 text-sm font-bold text-emerald-800 shadow-xs">
-          <Sparkles className="size-4 text-emerald-600" aria-hidden="true" />
-          AI-Powered Healthcare Welfare Navigator — Thailand
-        </span>
-
         {/* Headline */}
         <div className="space-y-4 max-w-3xl">
           <h1 className="text-4xl font-black leading-tight text-slate-900 md:text-6xl tracking-tight">
