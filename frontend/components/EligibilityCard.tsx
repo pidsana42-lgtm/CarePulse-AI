@@ -10,56 +10,56 @@ interface EligibilityCardProps {
 export default function EligibilityCard({ right, isPrimary = false }: EligibilityCardProps) {
   return (
     <div
-      className={`rounded-3xl p-6 sm:p-7 border-2 transition-all shadow-md ${
+      className={`rounded-[32px] p-6 sm:p-8 transition-all duration-300 shadow-xl ${
         isPrimary
-          ? 'bg-gradient-to-b from-emerald-50/80 via-white to-white border-emerald-500 ring-4 ring-emerald-500/10'
-          : 'bg-white border-slate-200 hover:border-emerald-300'
+          ? 'liquid-glass bg-white/90 border-2 border-emerald-500/50 ring-4 ring-emerald-500/10'
+          : 'liquid-glass-card'
       }`}
     >
       {/* Badge & Title */}
-      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-3.5">
         <div className="flex items-center gap-2 flex-wrap">
           {isPrimary ? (
-            <span className="flex items-center gap-1 bg-emerald-600 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-sm">
+            <span className="liquid-glass-pill flex items-center gap-1.5 bg-emerald-600 text-white text-xs font-black px-3.5 py-1 uppercase tracking-wider shadow-sm">
               <Sparkles className="w-3.5 h-3.5" /> สิทธิหลักของท่าน
             </span>
           ) : (
-            <span className="bg-teal-700 text-white text-xs font-bold px-3 py-1 rounded-full">
+            <span className="liquid-glass-pill bg-teal-800 text-white text-xs font-bold px-3.5 py-1">
               สวัสดิการเสริม / กายอุปกรณ์
             </span>
           )}
           {right.responsible_agency && (
-            <span className="flex items-center gap-1 bg-slate-100 text-slate-700 text-xs font-semibold px-2.5 py-1 rounded-lg">
-              <Building2 className="w-3.5 h-3.5 text-slate-500" />
+            <span className="liquid-glass-pill flex items-center gap-1 bg-white/80 text-slate-700 text-xs font-bold px-3 py-1 border border-black/[0.04]">
+              <Building2 className="w-3.5 h-3.5 text-slate-400" />
               {right.responsible_agency}
             </span>
           )}
         </div>
-        <div className="flex items-center gap-1 text-emerald-600 font-bold text-sm bg-emerald-50 px-2.5 py-1 rounded-full">
-          <CheckCircle2 className="w-4 h-4" />
+        <div className="liquid-glass-pill flex items-center gap-1 text-emerald-700 font-bold text-xs bg-emerald-100/70 px-3 py-1">
+          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
           <span>มีสิทธิได้รับความคุ้มครอง</span>
         </div>
       </div>
 
-      <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900 leading-tight">
+      <h3 className="text-xl sm:text-2xl font-black text-slate-950 leading-tight">
         {right.scheme_name}
       </h3>
 
-      <p className="mt-2 text-base text-slate-600 leading-relaxed font-medium">
+      <p className="mt-2 text-sm sm:text-base text-slate-600 leading-relaxed font-medium">
         {right.coverage_summary}
       </p>
 
       {/* Eligible Medical Equipment & Assistive Devices (กายอุปกรณ์) */}
       {right.eligible_equipment && right.eligible_equipment.length > 0 && (
-        <div className="mt-4 bg-teal-50/70 border border-teal-200 rounded-2xl p-4.5">
-          <h4 className="font-extrabold text-teal-900 text-sm sm:text-base mb-2.5 flex items-center gap-2">
+        <div className="mt-4 liquid-glass-card bg-teal-50/70 border border-teal-300/40 rounded-2xl p-4.5">
+          <h4 className="font-black text-teal-950 text-sm sm:text-base mb-2.5 flex items-center gap-2">
             <PackageCheck className="w-5 h-5 text-teal-700" />
             กายอุปกรณ์ & สิทธิประโยชน์พิเศษที่ขอรับได้:
           </h4>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-teal-950 font-semibold text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-teal-950 font-bold text-xs sm:text-sm">
             {right.eligible_equipment.map((eq, idx) => (
-              <div key={idx} className="flex items-start gap-2 bg-white/90 p-2.5 rounded-xl border border-teal-100 shadow-xs">
-                <span className="text-teal-600 font-bold">✓</span>
+              <div key={idx} className="flex items-start gap-2 bg-white/90 p-2.5 rounded-xl border border-teal-100 shadow-2xs">
+                <span className="text-teal-600 font-black">✓</span>
                 <span>{eq}</span>
               </div>
             ))}
@@ -69,12 +69,12 @@ export default function EligibilityCard({ right, isPrimary = false }: Eligibilit
 
       {/* Free Covered Items */}
       {right.free_items && right.free_items.length > 0 && (
-        <div className="mt-4 bg-slate-50/80 border border-slate-200/80 rounded-2xl p-4.5">
-          <h4 className="font-bold text-slate-900 text-sm sm:text-base mb-2 flex items-center gap-1.5">
+        <div className="mt-4 liquid-glass-card rounded-2xl p-4.5">
+          <h4 className="font-black text-slate-900 text-sm sm:text-base mb-2 flex items-center gap-1.5">
             <CheckCircle2 className="w-4.5 h-4.5 text-emerald-600" />
             รายการที่รัฐคุ้มครองฟรี / ไม่ต้องจ่ายเงิน:
           </h4>
-          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-slate-700 font-medium text-sm">
+          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-slate-700 font-medium text-xs sm:text-sm">
             {right.free_items.map((item, idx) => (
               <li key={idx} className="flex items-start gap-2">
                 <span className="text-emerald-500 font-bold">•</span>
@@ -89,20 +89,20 @@ export default function EligibilityCard({ right, isPrimary = false }: Eligibilit
       {(right.estimated_coverage_value || right.estimated_out_of_pocket) && (
         <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs sm:text-sm">
           {right.estimated_coverage_value && (
-            <div className="bg-emerald-50/60 border border-emerald-100 rounded-xl p-3 flex items-center gap-2.5 text-emerald-900">
+            <div className="liquid-glass-card bg-emerald-50/70 border border-emerald-200/60 rounded-2xl p-3.5 flex items-center gap-2.5 text-emerald-950">
               <Banknote className="w-5 h-5 text-emerald-600 shrink-0" />
               <div>
-                <span className="font-bold block">มูลค่าความคุ้มครองโดยรัฐ:</span>
-                <span className="font-medium text-emerald-700">{right.estimated_coverage_value}</span>
+                <span className="font-black block text-[11px] text-emerald-900 uppercase">มูลค่าความคุ้มครองโดยรัฐ:</span>
+                <span className="font-bold text-emerald-800 text-sm">{right.estimated_coverage_value}</span>
               </div>
             </div>
           )}
           {right.estimated_out_of_pocket && (
-            <div className="bg-slate-100/70 border border-slate-200 rounded-xl p-3 flex items-center gap-2.5 text-slate-800">
+            <div className="liquid-glass-card bg-slate-50/80 border border-black/[0.05] rounded-2xl p-3.5 flex items-center gap-2.5 text-slate-900">
               <AlertCircle className="w-5 h-5 text-slate-500 shrink-0" />
               <div>
-                <span className="font-bold block">ประมาณการค่าใช้จ่ายส่วนเกิน:</span>
-                <span className="font-medium text-slate-600">{right.estimated_out_of_pocket}</span>
+                <span className="font-black block text-[11px] text-slate-500 uppercase">ประมาณการค่าใช้จ่ายส่วนเกิน:</span>
+                <span className="font-bold text-slate-700 text-sm">{right.estimated_out_of_pocket}</span>
               </div>
             </div>
           )}
@@ -111,10 +111,10 @@ export default function EligibilityCard({ right, isPrimary = false }: Eligibilit
 
       {/* Official Legal References (แหล่งอ้างอิงและระเบียบราชการ) */}
       {right.official_references && right.official_references.length > 0 && (
-        <div className="mt-3.5 pt-3 border-t border-slate-100/90 text-xs text-slate-500 space-y-1">
-          <span className="font-bold text-slate-700 block">📜 แหล่งอ้างอิงระเบียบราชการ:</span>
+        <div className="mt-4 pt-3.5 border-t border-black/[0.05] text-xs text-slate-500 space-y-1.5">
+          <span className="font-black text-slate-800 block">แหล่งอ้างอิงระเบียบราชการ:</span>
           {right.official_references.map((ref, idx) => (
-            <div key={idx} className="flex items-center justify-between gap-2 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200/60">
+            <div key={idx} className="flex items-center justify-between gap-2 bg-white/70 px-3 py-2 rounded-xl border border-black/[0.04]">
               <span className="truncate max-w-[80%] font-medium text-slate-700">
                 {ref.title} ({ref.legal_act})
               </span>
@@ -123,7 +123,7 @@ export default function EligibilityCard({ right, isPrimary = false }: Eligibilit
                   href={ref.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-emerald-700 hover:text-emerald-900 font-bold shrink-0"
+                  className="text-emerald-700 hover:text-emerald-900 font-bold shrink-0 text-[11px]"
                 >
                   เว็บทางการ ↗
                 </a>
@@ -134,13 +134,13 @@ export default function EligibilityCard({ right, isPrimary = false }: Eligibilit
       )}
 
       {/* How to use & Contact Action */}
-      <div className="mt-4 pt-4 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs sm:text-sm">
-        <div className="flex items-center gap-2 text-slate-700">
-          <Hospital className="w-4 h-4 text-slate-500 shrink-0" />
+      <div className="mt-4 pt-4 border-t border-black/[0.05] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs sm:text-sm">
+        <div className="flex items-center gap-2 text-slate-700 font-medium">
+          <Hospital className="w-4 h-4 text-slate-400 shrink-0" />
           <span><strong>สถานพยาบาล:</strong> {right.hospital_network}</span>
         </div>
         {right.contact_channel && (
-          <div className="flex items-center gap-1.5 text-teal-800 font-bold bg-teal-50 border border-teal-100 px-3 py-1.5 rounded-xl">
+          <div className="liquid-glass-pill flex items-center gap-1.5 text-teal-900 font-black px-3.5 py-1.5 shadow-2xs">
             <PhoneCall className="w-3.5 h-3.5 text-teal-600" />
             <span>ติดต่อ: {right.contact_channel}</span>
           </div>
@@ -149,4 +149,3 @@ export default function EligibilityCard({ right, isPrimary = false }: Eligibilit
     </div>
   );
 }
-

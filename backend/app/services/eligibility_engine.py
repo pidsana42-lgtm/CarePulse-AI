@@ -9,6 +9,7 @@ from app.models.assessment import (
     OfficialReference
 )
 from app.core.pdpa_masking import pdpa_masker
+from app.services.cost_engine import compute_cost_planning
 
 
 class EligibilityEngine:
@@ -249,7 +250,7 @@ class EligibilityEngine:
                 url="https://niems.go.th"
             )
             all_references.append(ref_ucep)
-            recommendations.insert(0, "🚨 กรณีเจ็บป่วยฉุกเฉินวิกฤตถึงแก่ชีวิต (หมดสติ แน่นหน้าอก หายใจไม่ออก) ใช้สิทธิ UCEP เข้ารักษาได้ทุก รพ. ทั้งรัฐและเอกชน ฟรี 72 ชม. แรก โทร 1669 ทันที")
+            recommendations.insert(0, "กรณีเจ็บป่วยฉุกเฉินวิกฤตถึงแก่ชีวิต (หมดสติ แน่นหน้าอก หายใจไม่ออก) ใช้สิทธิ UCEP เข้ารักษาได้ทุก รพ. ทั้งรัฐและเอกชน ฟรี 72 ชม. แรก โทร 1669 ทันที")
 
         # ------------------------------------------------------------------
         # 5. Private Insurance — Combined Benefit Calculation
@@ -317,7 +318,7 @@ class EligibilityEngine:
                 )
             )
             recommendations.append(
-                f"💡 คุณมีประกันเอกชน ({ins_type_label}) จาก {ins_provider} — "
+                f"คุณมีประกันเอกชน ({ins_type_label}) จาก {ins_provider} — "
                 f"ใช้ควบคู่กับสิทธิรัฐเพื่อครอบคลุม ค่าห้องพิเศษ ยานอกบัญชี และโรงพยาบาลเอกชนได้ "
                 f"ควรตรวจสอบ Claim Process กับ {ins_provider} โดยตรง หรือโทร คปภ. 1186"
             )
@@ -326,9 +327,15 @@ class EligibilityEngine:
 
         participating_agencies = list(dict.fromkeys(participating_agencies))
 
+        grounded_cost = compute_cost_planning(
+            registered_province=request.registered_province,
+            occupation_status=request.occupation_status,
+            extra_equipment_count=total_equipment_count,
+            participating_agencies=participating_agencies,
+        )
         cost_planning = CostPlanningSummary(
-            total_estimated_benefit_value="ประมาณ 45,000 - 250,000+ บาท/ปี (รวมค่ารักษา กายอุปกรณ์ และสวัสดิการรัฐ)",
-            estimated_out_of_pocket="0 บาท สำหรับการรักษาและกายอุปกรณ์มาตรฐานตามสิทธิ",
+            total_estimated_benefit_value=grounded_cost["total_estimated_benefit_value"],
+            estimated_out_of_pocket=grounded_cost["estimated_out_of_pocket"],
             eligible_equipment_count=total_equipment_count,
             participating_agencies=participating_agencies
         )

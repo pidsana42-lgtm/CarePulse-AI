@@ -41,16 +41,19 @@ export function WebSearchSection() {
   const [hasSearched, setHasSearched] = useState(false);
 
   const handleSearch = async (searchQuery?: string, agency?: string) => {
-    const q = (searchQuery !== undefined ? searchQuery : query).trim();
+    const targetQuery = (searchQuery !== undefined ? searchQuery : query).trim();
+    const q = targetQuery || 'สิทธิประโยชน์บัตรทอง ผ้าอ้อมผู้ใหญ่';
+    if (!targetQuery) {
+      setQuery(q);
+    }
     const ag = (agency !== undefined ? agency : selectedAgency);
-    if (!q) return;
 
     setLoading(true);
     setHasSearched(true);
 
     try {
       const data = await searchWelfareAndPolicies(q, ag === 'all' ? undefined : ag);
-      setResults(data.results);
+      setResults(data.results || []);
     } catch (err) {
       console.error('Search error:', err);
     } finally {
@@ -64,15 +67,11 @@ export function WebSearchSection() {
         
         {/* Section Header */}
         <div className="text-center space-y-3 max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-2 rounded-full border border-black/[0.08] bg-white/90 px-4 py-1 text-xs font-bold text-slate-800 shadow-xs backdrop-blur-md">
-            <Globe className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Live Real-Time Welfare Search</span>
-          </div>
           <h2 className="text-3xl sm:text-5xl font-black text-slate-900 tracking-tight leading-tight">
             สืบค้นสิทธิประโยชน์ & ระเบียบทางการ
           </h2>
           <p className="text-slate-500 text-sm sm:text-base font-normal max-w-xl mx-auto">
-            ดึงข้อมูลแบบ Real-time จาก สปสช., กระทรวง พม., ประกันสังคม และ อปท. โดยตรง ไม่ต้องพึ่งพา Mock Data
+            ดึงข้อมูลจาก สปสช., กระทรวง พม., ประกันสังคม และ อปท. โดยตรง
           </p>
         </div>
 
@@ -108,7 +107,7 @@ export function WebSearchSection() {
           {/* Quick Keyword Pills */}
           <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
             <span className="text-slate-400 font-semibold flex items-center gap-1">
-              <Sparkles className="w-3.5 h-3.5 text-amber-500" /> คำค้นยอดนิยม:
+             คำค้นยอดนิยม:
             </span>
             {POPULAR_QUERIES.map((keyword, i) => (
               <button

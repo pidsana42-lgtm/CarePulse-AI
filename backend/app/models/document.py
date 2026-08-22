@@ -23,3 +23,4 @@ class SemanticSearchResult(BaseModel):
     description: str
     scheme_code: str
     similarity_score: float
+    source_id: str = Field(default="", description="Citation id of the retrieved policy/manual chunk, e.g. NHSO-2564-001")

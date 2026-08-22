@@ -1,3 +1,5 @@
+import { Sparkles, HelpCircle } from 'lucide-react'
+
 const faqs = [
   {
     q: 'จะรู้ได้อย่างไรว่าตัวเองมีสิทธิรักษาพยาบาลแบบไหน?',
@@ -29,34 +31,38 @@ export function FaqSection() {
   return (
     <section
       id="faq"
-      className="scroll-mt-20 border-t border-border bg-muted py-16 md:py-20"
+      className="scroll-mt-20 py-20 relative overflow-hidden"
     >
-      <div className="mx-auto w-full max-w-4xl px-4 sm:px-6">
-        <div className="mb-10 flex flex-col items-center gap-3 text-center">
-          <h2 className="text-balance text-3xl font-bold text-foreground">
+      <div className="mx-auto w-full max-w-4xl px-4 sm:px-6 space-y-10">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <div className="liquid-glass-pill px-4 py-1 text-xs font-black text-emerald-900 inline-flex items-center gap-1.5 shadow-xs">
+            <HelpCircle className="size-3.5 text-emerald-600" />
+            Frequently Asked Questions
+          </div>
+          <h2 className="text-3xl sm:text-5xl font-black tracking-tight text-slate-950">
             คำถามที่พบบ่อย
           </h2>
-          <p className="max-w-2xl text-pretty leading-relaxed text-muted-foreground">
-            รวมคำตอบเรื่องสิทธิรักษาพยาบาลที่คนไทยถามบ่อยที่สุด
+          <p className="max-w-xl text-pretty leading-relaxed text-slate-600 text-sm sm:text-base font-medium">
+            รวมคำตอบเรื่องสิทธิรักษาพยาบาลและสวัสดิการที่คนไทยถามบ่อยที่สุด
           </p>
         </div>
 
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3.5">
           {faqs.map((f) => (
             <details
               key={f.q}
-              className="group rounded-xl border border-border bg-card p-5 open:shadow-sm"
+              className="group liquid-glass-card rounded-[24px] p-5 sm:p-6 open:shadow-xl transition-all duration-300"
             >
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-semibold text-foreground [&::-webkit-details-marker]:hidden">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-black text-slate-900 text-sm sm:text-base [&::-webkit-details-marker]:hidden">
                 {f.q}
                 <span
                   aria-hidden="true"
-                  className="flex size-6 shrink-0 items-center justify-center rounded-full bg-secondary text-sm text-secondary-foreground transition-transform group-open:rotate-45"
+                  className="flex size-7 shrink-0 items-center justify-center rounded-full bg-black/[0.04] text-slate-600 font-bold transition-transform duration-300 group-open:rotate-45 group-open:bg-emerald-600 group-open:text-white"
                 >
                   +
                 </span>
               </summary>
-              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+              <p className="mt-4 text-xs sm:text-sm leading-relaxed text-slate-600 font-medium pt-3 border-t border-black/[0.04]">
                 {f.a}
               </p>
             </details>

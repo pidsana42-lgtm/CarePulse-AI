@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Calculator, Info, Wallet, PiggyBank, Receipt } from 'lucide-react'
+import { Calculator, Info, Wallet, PiggyBank, Receipt, Sparkles } from 'lucide-react'
 import {
   schemes,
   treatments,
@@ -40,27 +40,30 @@ export function CostEstimator() {
   return (
     <section
       id="estimator"
-      className="scroll-mt-20 border-y border-border bg-muted py-16 md:py-20"
+      className="scroll-mt-20 py-20 relative overflow-hidden"
     >
-      <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
-        <div className="mb-10 flex flex-col items-center gap-3 text-center">
-          <h2 className="flex items-center gap-2 text-balance text-3xl font-bold text-foreground">
-            <Calculator className="size-7 text-primary" aria-hidden="true" />
-            ประมาณค่ารักษาพยาบาล
+      <div className="mx-auto w-full max-w-5xl px-4 sm:px-6 space-y-10">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <div className="liquid-glass-pill px-4 py-1 text-xs font-black text-emerald-900 inline-flex items-center gap-1.5 shadow-xs">
+            <Calculator className="size-3.5 text-emerald-600" />
+            Medical Out-of-Pocket Estimator
+          </div>
+          <h2 className="text-3xl sm:text-5xl font-black tracking-tight text-slate-950">
+            ประมาณการค่ารักษาพยาบาล
           </h2>
-          <p className="max-w-2xl text-pretty leading-relaxed text-muted-foreground">
+          <p className="max-w-xl text-pretty leading-relaxed text-slate-600 text-sm sm:text-base font-medium">
             เลือกสิทธิ การรักษา และประเภทโรงพยาบาล
             เพื่อดูค่าใช้จ่ายโดยประมาณและส่วนที่คุณอาจต้องจ่ายเอง
           </p>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-5">
-          {/* Form */}
-          <div className="flex flex-col gap-5 rounded-2xl border border-border bg-card p-6 lg:col-span-2">
+          {/* Liquid Glass Form */}
+          <div className="liquid-glass rounded-[32px] p-6 sm:p-8 flex flex-col gap-6 lg:col-span-2 shadow-xl border border-white/80">
             <div className="flex flex-col gap-2">
               <label
                 htmlFor="scheme-select"
-                className="text-sm font-semibold text-foreground"
+                className="text-sm font-black text-slate-900"
               >
                 1. สิทธิรักษาพยาบาลของคุณ
               </label>
@@ -68,7 +71,7 @@ export function CostEstimator() {
                 id="scheme-select"
                 value={schemeId}
                 onChange={(e) => setSchemeId(e.target.value as SchemeId)}
-                className="h-11 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                className="h-12 w-full rounded-2xl border border-black/[0.08] bg-white/90 px-3.5 text-sm font-bold text-slate-800 focus:outline-none focus:ring-4 focus:ring-emerald-500/20 shadow-xs"
               >
                 {schemes.map((s) => (
                   <option key={s.id} value={s.id}>
@@ -83,7 +86,7 @@ export function CostEstimator() {
             <div className="flex flex-col gap-2">
               <label
                 htmlFor="treatment-select"
-                className="text-sm font-semibold text-foreground"
+                className="text-sm font-black text-slate-900"
               >
                 2. การรักษาที่ต้องการประมาณการ
               </label>
@@ -91,7 +94,7 @@ export function CostEstimator() {
                 id="treatment-select"
                 value={treatmentId}
                 onChange={(e) => setTreatmentId(e.target.value)}
-                className="h-11 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                className="h-12 w-full rounded-2xl border border-black/[0.08] bg-white/90 px-3.5 text-sm font-bold text-slate-800 focus:outline-none focus:ring-4 focus:ring-emerald-500/20 shadow-xs"
               >
                 {treatments.map((t) => (
                   <option key={t.id} value={t.id}>
@@ -100,14 +103,14 @@ export function CostEstimator() {
                 ))}
               </select>
               {treatment.note && (
-                <p className="text-xs leading-relaxed text-muted-foreground">
+                <p className="text-xs leading-relaxed text-slate-500 font-medium">
                   {treatment.note}
                 </p>
               )}
             </div>
 
-            <fieldset className="flex flex-col gap-2">
-              <legend className="mb-2 text-sm font-semibold text-foreground">
+            <fieldset className="flex flex-col gap-2.5">
+              <legend className="mb-1 text-sm font-black text-slate-900">
                 3. ประเภทโรงพยาบาล
               </legend>
               <div className="flex flex-col gap-2">
@@ -115,10 +118,10 @@ export function CostEstimator() {
                   <label
                     key={h.id}
                     className={cn(
-                      'flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors',
+                      'flex cursor-pointer items-start gap-3 rounded-2xl border p-3.5 transition-all duration-200',
                       hospital === h.id
-                        ? 'border-primary bg-secondary'
-                        : 'border-border bg-background hover:border-primary/50',
+                        ? 'liquid-glass bg-emerald-50/90 border-emerald-500 shadow-sm ring-2 ring-emerald-500/20'
+                        : 'bg-white/60 border-white/80 hover:bg-white/90',
                     )}
                   >
                     <input
@@ -127,13 +130,13 @@ export function CostEstimator() {
                       value={h.id}
                       checked={hospital === h.id}
                       onChange={() => setHospital(h.id)}
-                      className="mt-1 accent-[oklch(0.5_0.1_190)]"
+                      className="mt-1 text-emerald-600 focus:ring-emerald-500"
                     />
                     <span className="flex flex-col">
-                      <span className="text-sm font-medium text-foreground">
+                      <span className="text-sm font-bold text-slate-900">
                         {h.name}
                       </span>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs text-slate-500 font-medium">
                         {h.desc}
                       </span>
                     </span>
@@ -143,86 +146,88 @@ export function CostEstimator() {
             </fieldset>
           </div>
 
-          {/* Result */}
+          {/* Liquid Glass Result */}
           <div className="flex flex-col gap-4 lg:col-span-3">
-            <div className="rounded-2xl border border-border bg-card p-6">
-              <p className="mb-1 text-sm text-muted-foreground">
-                ผลการประมาณการ
-              </p>
-              <h3 className="mb-4 text-lg font-bold text-foreground">
-                {treatment.name} ·{' '}
-                {hospitalTypes.find((h) => h.id === hospital)?.name}
-              </h3>
+            <div className="liquid-glass rounded-[32px] p-6 sm:p-8 shadow-2xl space-y-6 border border-white/80">
+              <div>
+                <p className="text-xs font-black text-emerald-800 uppercase tracking-wide">
+                  ผลการประมาณการค่ารักษา
+                </p>
+                <h3 className="text-xl sm:text-2xl font-black text-slate-950 tracking-tight mt-1">
+                  {treatment.name} · {hospitalTypes.find((h) => h.id === hospital)?.name}
+                </h3>
+              </div>
 
-              <div className="mb-5 grid gap-3 sm:grid-cols-3">
-                <div className="rounded-xl bg-muted p-4">
-                  <div className="mb-1 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                    <Receipt className="size-3.5" aria-hidden="true" />
+              <div className="grid gap-3.5 sm:grid-cols-3">
+                <div className="liquid-glass-card rounded-2xl p-4.5 space-y-1">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-slate-500">
+                    <Receipt className="size-3.5 text-slate-400" />
                     ค่ารักษาโดยประมาณ
                   </div>
-                  <p className="text-lg font-bold text-foreground">
+                  <p className="text-base sm:text-lg font-black text-slate-950">
                     {formatBaht(result.low)} - {formatBaht(result.high)}
                   </p>
-                  <p className="text-xs text-muted-foreground">บาท</p>
+                  <p className="text-[11px] text-slate-400 font-semibold">บาท</p>
                 </div>
-                <div className="rounded-xl bg-secondary p-4">
-                  <div className="mb-1 flex items-center gap-1.5 text-xs font-medium text-secondary-foreground">
-                    <PiggyBank className="size-3.5" aria-hidden="true" />
+
+                <div className="liquid-glass-card rounded-2xl p-4.5 space-y-1 bg-emerald-50/70 border-emerald-300/40">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-800">
+                    <PiggyBank className="size-3.5 text-emerald-600" />
                     สิทธิครอบคลุม
                   </div>
-                  <p className="text-lg font-bold text-primary">{pct}%</p>
-                  <p className="text-xs text-secondary-foreground">
-                    ของค่ารักษา
-                  </p>
+                  <p className="text-xl font-black text-emerald-700">{pct}%</p>
+                  <p className="text-[11px] text-emerald-800 font-semibold">ของค่ารักษา</p>
                 </div>
+
                 <div
                   className={cn(
-                    'rounded-xl p-4',
+                    'liquid-glass-card rounded-2xl p-4.5 space-y-1',
                     result.outHigh === 0
-                      ? 'bg-secondary'
-                      : 'bg-accent/25',
+                      ? 'bg-teal-50/70 border-teal-300/40'
+                      : 'bg-rose-50/70 border-rose-300/40',
                   )}
                 >
-                  <div className="mb-1 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                    <Wallet className="size-3.5" aria-hidden="true" />
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-slate-600">
+                    <Wallet className="size-3.5 text-slate-500" />
                     คุณอาจต้องจ่ายเอง
                   </div>
-                  <p className="text-lg font-bold text-foreground">
+                  <p className="text-base sm:text-lg font-black text-slate-950">
                     {result.outHigh === 0
                       ? '0'
                       : `${formatBaht(result.outLow)} - ${formatBaht(result.outHigh)}`}
                   </p>
-                  <p className="text-xs text-muted-foreground">บาท</p>
+                  <p className="text-[11px] text-slate-400 font-semibold">บาท</p>
                 </div>
               </div>
 
-              {/* Coverage bar */}
-              <div className="mb-2 flex items-center justify-between text-xs font-medium">
-                <span className="text-primary">{result.coverage.label}</span>
-                <span className="text-muted-foreground">{pct}%</span>
-              </div>
-              <div
-                role="progressbar"
-                aria-valuenow={pct}
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-label="สัดส่วนที่สิทธิครอบคลุม"
-                className="h-3 w-full overflow-hidden rounded-full bg-muted"
-              >
+              {/* Progress Bar */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs font-black">
+                  <span className="text-emerald-700">{result.coverage.label}</span>
+                  <span className="text-slate-600">{pct}%</span>
+                </div>
                 <div
-                  className="h-full rounded-full bg-primary transition-all duration-500"
-                  style={{ width: `${pct}%` }}
-                />
+                  role="progressbar"
+                  aria-valuenow={pct}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  className="h-3.5 w-full overflow-hidden rounded-full bg-black/[0.04] p-0.5"
+                >
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-600 transition-all duration-700 shadow-sm"
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
               </div>
 
-              <ul className="mt-5 flex flex-col gap-2.5">
-                {result.coverage.notes.map((n) => (
+              <ul className="flex flex-col gap-2.5 pt-2 border-t border-black/[0.05]">
+                {result.coverage.notes.map((n, i) => (
                   <li
-                    key={n}
-                    className="flex items-start gap-2 text-sm leading-relaxed text-muted-foreground"
+                    key={i}
+                    className="flex items-start gap-2 text-xs sm:text-sm leading-relaxed text-slate-600 font-medium"
                   >
                     <Info
-                      className="mt-0.5 size-4 shrink-0 text-primary"
+                      className="mt-0.5 size-4 shrink-0 text-emerald-600"
                       aria-hidden="true"
                     />
                     {n}
@@ -231,11 +236,8 @@ export function CostEstimator() {
               </ul>
             </div>
 
-            <div className="flex items-start gap-3 rounded-xl border border-accent/60 bg-accent/15 p-4 text-sm leading-relaxed text-foreground">
-              <Info
-                className="mt-0.5 size-4 shrink-0 text-accent-foreground"
-                aria-hidden="true"
-              />
+            <div className="liquid-glass rounded-2xl p-4 flex items-start gap-3 text-xs text-slate-600 font-medium border border-white/80">
+              <Info className="mt-0.5 size-4 shrink-0 text-emerald-700" />
               <p>
                 ตัวเลขนี้เป็นการประมาณการเบื้องต้นจากอัตราค่ารักษาทั่วไป
                 ค่าใช้จ่ายจริงขึ้นอยู่กับอาการ ภาวะแทรกซ้อน และโรงพยาบาลแต่ละแห่ง

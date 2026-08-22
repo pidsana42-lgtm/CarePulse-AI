@@ -7,7 +7,7 @@ from typing import List, Dict, Any, Optional, AsyncGenerator
 import httpx
 from app.core.config import settings
 from app.services.rag_service import rag_service
-from app.services.live_web_search import live_web_search
+from app.services.web_search_service import web_search_service
 
 logger = logging.getLogger(__name__)
 
@@ -36,10 +36,10 @@ def is_smalltalk(text: str) -> Optional[str]:
         for p in GREETING_PATTERNS:
             if re.search(p, cleaned):
                 if any(k in cleaned for k in ["ขอบคุณ", "thanks", "thank"]):
-                    return "ยินดีเป็นอย่างยิ่งครับ! หากมีข้อสงสัยเรื่องสิทธิการรักษาพยาบาล กายอุปกรณ์ หรือสวัสดิการรัฐด้านอื่นๆ สามารถพิมพ์ถามผมได้ตลอดเวลาเลยนะครับ ขอให้สุขภาพแข็งแรงครับ 😊"
+                    return "ยินดีเป็นอย่างยิ่งครับ! หากมีข้อสงสัยเรื่องสิทธิการรักษาพยาบาล กายอุปกรณ์ หรือสวัสดิการรัฐด้านอื่นๆ สามารถพิมพ์ถามผมได้ตลอดเวลาเลยนะครับ ขอให้สุขภาพแข็งแรงครับ"
                 if any(k in cleaned for k in ["ทำอะไรได้บ้าง", "คุณคือใคร", "แนะนำตัว", "ช่วยอะไร"]):
                     return (
-                        "ผมคือ **CarePulse AI** ผู้ช่วยสิทธิสุขภาพและสวัสดิการสังคมของไทยครับ 🏥\n\n"
+                        "ผมคือ **CarePulse AI** ผู้ช่วยสิทธิสุขภาพและสวัสดิการสังคมของไทยครับ\n\n"
                         "ผมสามารถช่วยท่าน:\n"
                         "1. **ตรวจสอบสิทธิการรักษา**: บัตรทอง 30 บาท, ประกันสังคม ม.33/39/40, ข้าราชการ (CSMBS)\n"
                         "2. **ประเมินสิทธิขอรับกายอุปกรณ์ฟรี**: ผ้าอ้อมผู้ใหญ่ (กปท. วันละ <= 3 ชิ้น), เตียงผู้ป่วยปรับระดับ, รถเข็น (พม.), เครื่องผลิตออกซิเจน\n"
@@ -48,7 +48,7 @@ def is_smalltalk(text: str) -> Optional[str]:
                         "ท่านสามารถพิมพ์คำถาม หรืออัปโหลดภาพใบรับรองแพทย์มาได้เลยครับ!"
                     )
                 return (
-                    "สวัสดีครับ! ผมคือ **CarePulse AI** ผู้ช่วยให้คำปรึกษาด้านสิทธิการรักษาพยาบาลและสวัสดิการสังคมครับ 😊\n\n"
+                    "สวัสดีครับ! ผมคือ **CarePulse AI** ผู้ช่วยให้คำปรึกษาด้านสิทธิการรักษาพยาบาลและสวัสดิการสังคมครับ\n\n"
                     "วันนี้มีเรื่องสิทธิสุขภาพด้านไหนให้ผมช่วยดูแลไหมครับ เช่น:\n"
                     "• *ขอรับผ้าอ้อมผู้ใหญ่ฟรีทำอย่างไร?*\n"
                     "• *ผู้ป่วยติดเตียงขอยืมเตียงปรับระดับหรือรถเข็นได้จากที่ไหน?*\n"
@@ -147,11 +147,11 @@ class LLMService:
         if user_query:
             if use_web_search and len(user_query.strip()) > 3:
                 try:
-                    web_results = await live_web_search.search_live_web(user_query, max_results=3)
+                    web_results = await web_search_service.search_welfare_and_web(user_query)
                     if web_results:
-                        live_web_sources = web_results
+                        live_web_sources = web_results[:4]
                         web_text = "\n\n[ข้อมูลระเบียบและข่าวสารสิทธิประโยชน์ล่าสุดที่สืบค้นจากอินเทอร์เน็ตแบบเรียลไทม์ (Live Web Search)]:\n"
-                        for w in web_results:
+                        for w in live_web_sources:
                             web_text += f"- {w['title']}: {w['snippet']} (แหล่งอ้างอิง: {w['url']})\n"
                         enriched_system_prompt += web_text
                 except Exception as e:
@@ -159,12 +159,21 @@ class LLMService:
 
             if use_rag:
                 try:
-                    rag_results = rag_service.search_benefits(user_query, top_k=2)
+                    rag_results = rag_service.search_benefits(user_query, top_k=3)
                     if rag_results:
-                        context_text = "\n\n[ข้อมูลสิทธิประโยชน์จากฐานข้อมูลกฎหมาย CarePulse]:\n"
+                        context_text = "\n\n[ข้อมูลสิทธิประโยชน์จากฐานข้อมูลกฎหมาย CarePulse (Semantic RAG)]:\n"
                         for r in rag_results:
-                            context_text += f"- {r.title} ({r.scheme_code}): {r.description}\n"
-                            retrieved_contexts.append({"title": r.title, "scheme": r.scheme_code})
+                            context_text += f"- [{r.source_id}] {r.title} ({r.scheme_code}): {r.description}\n"
+                            retrieved_contexts.append({
+                                "title": r.title,
+                                "scheme": r.scheme_code,
+                                "source_id": r.source_id,
+                                "similarity_score": r.similarity_score,
+                            })
+                        context_text += (
+                            "\nเมื่อใช้ข้อมูลข้างต้นในการตอบ ให้ระบุรหัสอ้างอิงในวงเล็บเหลี่ยม เช่น [NHSO-2564-001] "
+                            "ต่อท้ายประโยคที่อ้างถึง และห้ามอ้างรหัสที่ไม่ปรากฏในรายการนี้\n"
+                        )
                         enriched_system_prompt += context_text
                 except Exception as e:
                     logger.warning(f"RAG lookup warning: {e}")
@@ -185,15 +194,21 @@ class LLMService:
         for s in live_web_sources:
             snippets_text += f"• **{s['title']}**: {s['snippet']}\n"
 
-        response = f"จากการสืบค้นข้อมูลระเบียบราชการและสิทธิประโยชน์ล่าสุดจากอินเทอร์เน็ต (Live Web Search) สำหรับคำถาม: **\"{user_query}\"**\n\n"
+        response = f"จากการสืบค้นข้อมูลระเบียบราชการและสิทธิประโยชน์ล่าสุด (CarePulse Hybrid RAG + Live Web Search) สำหรับคำถาม: **\"{user_query}\"**\n\n"
         
+        if retrieved_contexts:
+            response += "**ข้อกฎหมายและสิทธิประโยชน์ที่เกี่ยวข้อง (CarePulse Semantic RAG):**\n"
+            for ctx in retrieved_contexts:
+                response += f"• **{ctx.get('title', '')}** ({ctx.get('scheme', '')}) [{ctx.get('source_id', '')}]\n"
+            response += "\n"
+
         if live_web_sources:
-            response += f"📋 **สรุปข้อมูลและเกณฑ์ที่สืบค้นได้จากเว็บทางการล่าสุด:**\n{snippets_text}\n"
+            response += f"**สรุปข้อมูลและเกณฑ์ที่สืบค้นได้จากเว็บทางการล่าสุด (Live Web Search):**\n{snippets_text}\n"
 
         q_lower = user_query.lower()
         if "ผ้าอ้อม" in q_lower or "แผ่นรองซับ" in q_lower:
             response += (
-                "💡 **ขั้นตอนการขอรับสิทธิผ้าอ้อมผู้ใหญ่ฟรี:**\n"
+                "**ขั้นตอนการขอรับสิทธิผ้าอ้อมผู้ใหญ่ฟรี:**\n"
                 "1. **เกณฑ์คุณสมบัติ**: เป็นผู้ป่วยติดบ้าน/ติดเตียง (คะแนน ADL ไม่เกิน 6-11) หรือผู้มีภาวะกลั้นปัสสาวะ/อุจจาระไม่อยู่ (ครอบคลุมทุกสิทธิการรักษา)\n"
                 "2. **จำนวนที่ได้รับ**: ฟรีวันละไม่เกิน 3 ชิ้นต่อคน จัดสรรผ่านงบประมาณ **กองทุนหลักประกันสุขภาพท้องถิ่น (กปท.) / อบต. / เทศบาล** [อ้างอิง: ประกาศ สปสช. กปท. ข้อ 7(2)]\n"
                 "3. **สถานที่ติดต่อ**: ญาติสามารถนำบัตรประชาชนและประวัติการรักษาติดต่อที่ **รพ.สต., ศูนย์บริการสาธารณสุข หรือ กองสาธารณสุข อบต./เทศบาล** ในพื้นที่\n"
@@ -201,7 +216,7 @@ class LLMService:
             )
         elif "เตียง" in q_lower or "รถเข็น" in q_lower or "ออกซิเจน" in q_lower:
             response += (
-                "💡 **ขั้นตอนการขอรับกายอุปกรณ์ (เตียงผู้ป่วย / รถเข็น / เครื่องผลิตออกซิเจน):**\n"
+                "**ขั้นตอนการขอรับกายอุปกรณ์ (เตียงผู้ป่วย / รถเข็น / เครื่องผลิตออกซิเจน):**\n"
                 "1. **หน่วยงานรับผิดชอบ**: กระทรวงการพัฒนาสังคมและความมั่นคงของมนุษย์ (พม.) ร่วมกับ กองทุนฟื้นฟูสมรรถภาพ สปสช. [อ้างอิง: พ.ร.บ. คนพิการ พ.ศ. 2550 มาตรา 20]\n"
                 "2. **เอกสารที่ต้องเตรียม**: บัตรประชาชน, ทะเบียนบ้าน, ใบรับรองแพทย์แสดงความจำเป็น, และสมุดประจำตัวคนพิการ (ถ้ามี)\n"
                 "3. **ช่องทางยื่นเรื่อง**: ติดต่อที่สำนักงาน **พมจ. ประจำจังหวัด**, ศูนย์บริการคนพิการ หรือยืมคืนผ่าน **ศูนย์ยืมอุปกรณ์ชุมชน ณ รพ.สต./อบต.**\n"
@@ -209,19 +224,19 @@ class LLMService:
             )
         elif "ทันตกรรม" in q_lower or "ฟัน" in q_lower:
             response += (
-                "💡 **สิทธิประโยชน์ด้านทันตกรรม:**\n"
+                "**สิทธิประโยชน์ด้านทันตกรรม:**\n"
                 "• **ประกันสังคม (ม.33 / ม.39)**: ถอนฟัน อุดฟัน ขูดหินปูน ผ่าฟันคุด ได้ **900 บาท/ปี** แบบไม่ต้องสำรองจ่าย ณ คลินิกคู่สัญญา [อ้างอิง: พ.ร.บ. ประกันสังคม พ.ศ. 2533]\n"
                 "• **สิทธิบัตรทอง 30 บาท**: ตรวจรักษาทันตกรรมพื้นฐาน ฟันเทียม และรากฟันเทียม ฟรี ณ หน่วยบริการประจำตามสิทธิ [อ้างอิง: พ.ร.บ. หลักประกันสุขภาพแห่งชาติ พ.ศ. 2545]\n"
             )
         elif "30 บาท" in q_lower or "บัตรทอง" in q_lower or "ต่างจังหวัด" in q_lower:
             response += (
-                "💡 **สิทธิ 30 บาทรักษาทุกที่:**\n"
+                "**สิทธิ 30 บาทรักษาทุกที่:**\n"
                 "• สามารถใช้บัตรประชาชนใบเดียวเข้ารับบริการได้ที่ **หน่วยบริการปฐมภูมิ คลินิกชุมชนอบอุ่น และร้านยาคุณภาพ** ที่ร่วมโครงการได้ทั่วประเทศ ไม่ต้องใช้ใบส่งตัว [อ้างอิง: พ.ร.บ. หลักประกันสุขภาพแห่งชาติ พ.ศ. 2545]\n"
                 "• สอบถามหน่วยบริการที่ร่วมโครงการโทร **1330** หรือค้นหาผ่านแอปฯ สปสช.\n"
             )
         else:
             response += (
-                "💡 **คำแนะนำการใช้สิทธิ:**\n"
+                "**คำแนะนำการใช้สิทธิ:**\n"
                 "• หากเป็นกรณีเจ็บป่วยฉุกเฉินวิกฤต สามารถใช้สิทธิ **UCEP** เข้ารักษาได้ทุกโรงพยาบาลฟรี 72 ชั่วโมงแรก (โทร 1669) [อ้างอิง: พ.ร.บ. การแพทย์ฉุกเฉิน พ.ศ. 2551]\n"
                 "• สามารถสอบถามข้อมูลสิทธิเพิ่มเติมได้ที่สายด่วน **สปสช. 1330** หรือ **พม. 1300**\n"
             )

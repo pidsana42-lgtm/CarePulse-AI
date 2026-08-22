@@ -54,11 +54,6 @@ export default function CameraCapture({ onImageCaptured, isLoading = false }: Ca
             <h3 className="text-xl sm:text-2xl font-bold text-slate-800">แตะที่นี่เพื่อ "ถ่ายรูปเอกสาร"</h3>
             <p className="text-slate-600 mt-1 text-base">หรือเลือกรูปภาพจากคลังภาพบนโทรศัพท์ของท่าน</p>
           </div>
-
-          <div className="flex items-center gap-2 mt-2 text-xs font-semibold text-emerald-800 bg-emerald-100/80 px-3 py-1.5 rounded-full">
-            <CheckCircle className="w-4 h-4 text-emerald-600" />
-            <span>ไม่ต้องติดตั้งแอปพลิเคชันเพิ่มเติม • ระบบ Mask ข้อมูลอัตโนมัติ</span>
-          </div>
         </div>
       ) : (
         <div className="space-y-4">
