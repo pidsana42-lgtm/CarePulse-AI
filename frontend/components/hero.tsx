@@ -1,11 +1,5 @@
 import { ShieldCheck, Stethoscope, Phone, ArrowRight } from 'lucide-react'
 
-const STATS = [
-  { value: '7+', label: 'กองทุนและหน่วยงานรัฐ' },
-  { value: '30+', label: 'สิทธิประโยชน์ครอบคลุม' },
-  { value: '120K+', label: 'บาทที่ประชาชนประหยัดได้/ปี' },
-]
-
 const HOTLINES = [
   { color: 'text-emerald-600', number: '1330', label: 'สปสช. บัตรทอง' },
   { color: 'text-teal-600', number: '1300', label: 'พม. สวัสดิการ' },
@@ -48,16 +42,6 @@ export function Hero() {
             <Stethoscope className="size-5 text-emerald-600" />
             สแกนใบรับรองแพทย์
           </a>
-        </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-6 w-full max-w-md">
-          {STATS.map((s, i) => (
-            <div key={i} className="text-center">
-              <div className="text-3xl font-black text-emerald-600">{s.value}</div>
-              <div className="text-xs text-slate-500 font-semibold mt-0.5 leading-tight">{s.label}</div>
-            </div>
-          ))}
         </div>
 
         {/* Hotlines */}
