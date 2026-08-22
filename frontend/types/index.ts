@@ -56,6 +56,10 @@ export interface AssessmentInput {
   has_disability_card: boolean;
   chronic_conditions: string[];
   urgency_level: string;
+  has_private_insurance?: boolean;
+  private_insurance_type?: string; // 'life' | 'health' | 'both'
+  private_insurance_provider?: string;
+  private_insurance_annual_limit?: number;
 }
 
 export interface DocumentScanResult {

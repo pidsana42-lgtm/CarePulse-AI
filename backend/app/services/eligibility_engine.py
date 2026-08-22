@@ -251,7 +251,79 @@ class EligibilityEngine:
             all_references.append(ref_ucep)
             recommendations.insert(0, "🚨 กรณีเจ็บป่วยฉุกเฉินวิกฤตถึงแก่ชีวิต (หมดสติ แน่นหน้าอก หายใจไม่ออก) ใช้สิทธิ UCEP เข้ารักษาได้ทุก รพ. ทั้งรัฐและเอกชน ฟรี 72 ชม. แรก โทร 1669 ทันที")
 
+        # ------------------------------------------------------------------
+        # 5. Private Insurance — Combined Benefit Calculation
+        # ------------------------------------------------------------------
+        if getattr(request, 'has_private_insurance', False):
+            ins_type = getattr(request, 'private_insurance_type', 'health') or 'health'
+            ins_provider = getattr(request, 'private_insurance_provider', '') or 'บริษัทประกันเอกชน'
+            ins_limit = getattr(request, 'private_insurance_annual_limit', None)
+
+            ins_type_label = {
+                'life': 'ประกันชีวิต',
+                'health': 'ประกันสุขภาพเอกชน',
+                'both': 'ประกันชีวิต + ประกันสุขภาพเอกชน',
+            }.get(ins_type, 'ประกันเอกชน')
+
+            limit_str = f"{ins_limit:,} บาท/ปี" if ins_limit else "ตามกรมธรรม์"
+
+            free_items_ins = [
+                f"ค่ารักษาพยาบาลส่วนเกินวงเงินสิทธิรัฐ ชดเชยโดย {ins_provider} สูงสุด {limit_str}",
+            ]
+            if ins_type in ('life', 'both'):
+                free_items_ins += [
+                    "เงินชดเชยรายได้ระหว่างนอนรักษาตัวใน รพ. (ถ้ากรมธรรม์กำหนด)",
+                    "เงินประกันชีวิต / ทุพพลภาพถาวร ตามกรมธรรม์",
+                ]
+            if ins_type in ('health', 'both'):
+                free_items_ins += [
+                    "ค่าห้องพิเศษ / ค่าห้อง ICU ส่วนเกินที่สิทธิรัฐไม่ครอบคลุม",
+                    "ค่ายานอกบัญชียาหลัก ที่แพทย์สั่ง (ถ้ากรมธรรม์ครอบคลุม)",
+                    "ค่าผ่าตัดและค่าแพทย์ส่วนเกินในโรงพยาบาลเอกชน",
+                ]
+
+            participating_agencies.append(f"บริษัทประกัน: {ins_provider}")
+            additional_rights.append(
+                HealthcareRightDetail(
+                    scheme_code="PRIVATE_INS",
+                    scheme_name=f"{ins_type_label} ({ins_provider})",
+                    responsible_agency=ins_provider,
+                    contact_channel=f"ติดต่อ {ins_provider} โดยตรง หรือสายด่วน คปภ. 1186",
+                    is_eligible=True,
+                    coverage_summary=(
+                        f"ประกันเอกชน {ins_type_label} จาก {ins_provider} ใช้ควบคู่กับสิทธิรัฐได้ "
+                        f"ครอบคลุมค่าใช้จ่ายที่สิทธิรัฐไม่ครอบคลุม เช่น ห้องพิเศษ ยานอกบัญชี และโรงพยาบาลเอกชน "
+                        f"วงเงินสูงสุด {limit_str}"
+                    ),
+                    free_items=free_items_ins,
+                    co_pay_items=["ค่าใช้จ่ายเกินวงเงินกรมธรรม์ — ต้องชำระส่วนต่างเอง"],
+                    eligible_equipment=[],
+                    estimated_coverage_value=f"วงเงิน {limit_str} (ตามกรมธรรม์ {ins_provider})",
+                    estimated_out_of_pocket="ตามเงื่อนไขและข้อยกเว้นในกรมธรรม์",
+                    official_references=[
+                        OfficialReference(
+                            title="สำนักงานคณะกรรมการกำกับและส่งเสริมการประกอบธุรกิจประกันภัย (คปภ.)",
+                            legal_act="พ.ร.บ. ประกันชีวิต พ.ศ. 2535 และ พ.ร.บ. ประกันวินาศภัย พ.ศ. 2535",
+                            agency="สำนักงาน คปภ.",
+                            url="https://www.oic.or.th"
+                        )
+                    ],
+                    how_to_use=(
+                        "1) แจ้งโรงพยาบาลว่ามีประกันเอกชน รับ Claim Form จากพยาบาล "
+                        "2) ส่งเอกสาร (ใบรับรองแพทย์ ใบเสร็จ) ให้บริษัทประกัน ภายใน 30 วัน "
+                        "3) กรณีเร่งด่วน โทรสายด่วน คปภ. 1186 เพื่อรับคำแนะนำ"
+                    ),
+                    hospital_network=f"โรงพยาบาลในเครือข่าย {ins_provider} (ดูรายชื่อในแอปหรือเว็บของบริษัท)"
+                )
+            )
+            recommendations.append(
+                f"💡 คุณมีประกันเอกชน ({ins_type_label}) จาก {ins_provider} — "
+                f"ใช้ควบคู่กับสิทธิรัฐเพื่อครอบคลุม ค่าห้องพิเศษ ยานอกบัญชี และโรงพยาบาลเอกชนได้ "
+                f"ควรตรวจสอบ Claim Process กับ {ins_provider} โดยตรง หรือโทร คปภ. 1186"
+            )
+
         masked_citizen_id = pdpa_masker.mask_thai_citizen_id(request.citizen_id) if request.citizen_id else "ไม่ได้ระบุ"
+
         participating_agencies = list(dict.fromkeys(participating_agencies))
 
         cost_planning = CostPlanningSummary(

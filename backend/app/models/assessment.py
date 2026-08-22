@@ -19,6 +19,11 @@ class CitizenAssessmentRequest(BaseModel):
     has_disability_card: bool = Field(default=False, description="Has registered disability status")
     chronic_conditions: List[str] = Field(default=[], description="List of chronic conditions (e.g., เบาหวาน, ความดัน, ติดเตียง)")
     urgency_level: str = Field(default="normal", description="'emergency', 'urgent', 'normal'")
+    # Private insurance fields
+    has_private_insurance: bool = Field(default=False, description="Has private life/health insurance")
+    private_insurance_type: Optional[str] = Field(None, description="'life', 'health', or 'both'")
+    private_insurance_provider: Optional[str] = Field(None, description="Insurance company name, e.g. AIA, คม.ชล., กรุงเทพประกันชีวิต")
+    private_insurance_annual_limit: Optional[int] = Field(None, description="Annual coverage limit in THB")
 
 
 class HealthcareRightDetail(BaseModel):
