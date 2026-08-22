@@ -1,0 +1,29 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: carepulse-core-service
+  data:
+    mongodb:
+      uri: ${MONGO_URI:mongodb://admin:secretpassword@localhost:27017/carepulse_db?authSource=admin}
+
+# Microservice Integration: FastAPI AI Inference Service
+services:
+  fastapi-ai:
+    url: ${AI_SERVICE_URL:http://localhost:8000}
+
+# Observability & Monitoring with Prometheus & Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+    prometheus:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}

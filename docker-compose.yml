@@ -1,0 +1,152 @@
+version: '3.8'
+
+services:
+  # ----------------------------------------------------
+  # 1. MongoDB: Database for Assessments, Users & Records
+  # ----------------------------------------------------
+  mongodb:
+    image: mongo:7.0
+    container_name: carepulse-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-secretpassword}
+      MONGO_INITDB_DATABASE: ${MONGO_DB:-carepulse_db}
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - carepulse-network
+
+  # ----------------------------------------------------
+  # 2. Qdrant: Vector Database for Semantic Embeddings
+  # ----------------------------------------------------
+  vectordb:
+    image: qdrant/qdrant:latest
+    container_name: carepulse-vectordb
+    restart: unless-stopped
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    networks:
+      - carepulse-network
+
+  # ----------------------------------------------------
+  # 3. FastAPI (Python): AI Inference, OCR & Vector Search
+  # ----------------------------------------------------
+  backend-ai:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: carepulse-backend-ai
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=development
+      - MONGO_URI=mongodb://${MONGO_USER:-admin}:${MONGO_PASSWORD:-secretpassword}@mongodb:27017/${MONGO_DB:-carepulse_db}?authSource=admin
+      - VECTOR_DB_HOST=vectordb
+      - VECTOR_DB_PORT=6333
+      - CORS_ORIGINS=http://localhost:3000,http://localhost:8080
+    depends_on:
+      - mongodb
+      - vectordb
+    volumes:
+      - ./backend:/app
+    networks:
+      - carepulse-network
+
+  # ----------------------------------------------------
+  # 4. Spring Boot (Java): Data Gateway & Eligibility Engine
+  # ----------------------------------------------------
+  backend-core:
+    build:
+      context: ./backend-spring-boot
+      dockerfile: Dockerfile
+    container_name: carepulse-backend-core
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - MONGO_URI=mongodb://${MONGO_USER:-admin}:${MONGO_PASSWORD:-secretpassword}@mongodb:27017/${MONGO_DB:-carepulse_db}?authSource=admin
+      - AI_SERVICE_URL=http://backend-ai:8000
+    depends_on:
+      - mongodb
+      - backend-ai
+    networks:
+      - carepulse-network
+
+  # ----------------------------------------------------
+  # 5. Next.js: Citizen User Interface (Mobile / Elderly)
+  # ----------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: carepulse-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8080/api/v1
+    depends_on:
+      - backend-core
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    networks:
+      - carepulse-network
+
+  # ----------------------------------------------------
+  # 6. Prometheus: Real-time Metric Scraping & Monitoring
+  # ----------------------------------------------------
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: carepulse-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    depends_on:
+      - backend-ai
+      - backend-core
+    networks:
+      - carepulse-network
+
+  # ----------------------------------------------------
+  # 7. Grafana: Visual Real-time Dashboard
+  # ----------------------------------------------------
+  grafana:
+    image: grafana/grafana:latest
+    container_name: carepulse-grafana
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - carepulse-network
+
+volumes:
+  mongodb_data:
+  qdrant_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  carepulse-network:
+    driver: bridge

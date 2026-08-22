@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: carepulse-frontend
+  namespace: carepulse
+  labels:
+    app: carepulse-frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: carepulse-frontend
+  template:
+    metadata:
+      labels:
+        app: carepulse-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: ghcr.io/carepulse/carepulse-frontend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+              name: http
+          env:
+            - name: NEXT_PUBLIC_API_URL
+              value: "https://api.carepulse.health/api/v1"
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: carepulse-frontend
+  namespace: carepulse
+spec:
+  type: ClusterIP
+  selector:
+    app: carepulse-frontend
+  ports:
+    - port: 3000
+      targetPort: 3000
+      name: http
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: carepulse-ingress
+  namespace: carepulse
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  tls:
+    - hosts:
+        - carepulse.health
+        - api.carepulse.health
+      secretName: carepulse-tls-secret
+  rules:
+    - host: carepulse.health
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: carepulse-frontend
+                port:
+                  number: 3000
+    - host: api.carepulse.health
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: carepulse-core-service
+                port:
+                  number: 8080
