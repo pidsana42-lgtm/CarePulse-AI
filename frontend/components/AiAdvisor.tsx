@@ -98,45 +98,47 @@ export default function AiAdvisor() {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="flex items-center gap-2.5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-bold py-3.5 px-5 rounded-full shadow-2xl hover:scale-105 transition-all duration-300 ring-4 ring-emerald-500/20"
+          className="flex items-center gap-3 apple-glass border border-black/10 text-slate-900 font-bold py-3.5 px-5 rounded-full shadow-2xl hover:scale-105 active:scale-95 transition-all duration-300 ring-4 ring-emerald-500/10 cursor-pointer group"
         >
-          <Bot className="w-6 h-6 animate-bounce" />
-          <span className="text-base tracking-wide">ถาม AI ปรึกษาสิทธิสุขภาพ</span>
-          <span className="bg-emerald-400 text-emerald-950 text-xs px-2 py-0.5 rounded-full font-extrabold uppercase">
-            Qwen 3.8
+          <div className="size-8 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-sm group-hover:rotate-12 transition-transform">
+            <Bot className="w-4 h-4" />
+          </div>
+          <span className="text-sm font-bold tracking-tight">ถาม AI สิทธิสุขภาพ</span>
+          <span className="bg-emerald-100 text-emerald-900 text-[10px] px-2 py-0.5 rounded-full font-extrabold uppercase tracking-wide">
+            Live Web
           </span>
         </button>
       )}
 
       {/* Chat Window */}
       {isOpen && (
-        <div className="w-[360px] sm:w-[420px] h-[580px] max-h-[85vh] bg-white rounded-3xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-300">
+        <div className="w-[360px] sm:w-[420px] h-[580px] max-h-[85vh] apple-glass bg-white/95 rounded-[32px] shadow-2xl border border-black/[0.08] flex flex-col overflow-hidden animate-apple-fade-in">
           {/* Header */}
-          <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 p-4 text-white flex items-center justify-between shadow-md">
+          <div className="apple-glass bg-emerald-700/90 text-white p-4 flex items-center justify-between border-b border-white/10 backdrop-blur-xl">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center backdrop-blur-sm shadow-inner">
-                <Bot className="w-6 h-6 text-white" />
+              <div className="size-10 rounded-2xl bg-white/20 flex items-center justify-center backdrop-blur-md shadow-inner">
+                <Bot className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h3 className="font-bold text-base flex items-center gap-1.5">
+                <h3 className="font-bold text-sm flex items-center gap-1.5">
                   CarePulse AI Advisor
-                  <Sparkles className="w-4 h-4 text-amber-300" />
+                  <Sparkles className="w-3.5 h-3.5 text-amber-300" />
                 </h3>
-                <p className="text-xs text-emerald-100 font-medium">
+                <p className="text-[11px] text-emerald-100/90 font-medium">
                   {activeModel}
                 </p>
               </div>
             </div>
             <button
               onClick={() => setIsOpen(false)}
-              className="p-1.5 rounded-xl hover:bg-white/20 transition-colors text-white"
+              className="p-2 rounded-full hover:bg-white/20 active:scale-90 transition-all text-white cursor-pointer"
             >
               <ChevronDown className="w-5 h-5" />
             </button>
           </div>
 
           {/* Messages Container */}
-          <div className="flex-1 p-4 overflow-y-auto space-y-3.5 bg-slate-50">
+          <div className="flex-1 p-4 overflow-y-auto space-y-3.5 bg-[#fbfbfd]">
             {messages.map((m, idx) => (
               <div
                 key={idx}

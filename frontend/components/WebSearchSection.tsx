@@ -11,7 +11,7 @@ import {
   Filter,
   CheckCircle2,
   ExternalLink,
-  PhoneCall
+  ArrowUpRight
 } from 'lucide-react';
 
 const POPULAR_QUERIES = [
@@ -59,29 +59,31 @@ export function WebSearchSection() {
   };
 
   return (
-    <section id="search" className="scroll-mt-20 py-16 bg-slate-50 border-b border-border">
-      <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 space-y-6">
-        <div className="text-center space-y-2 max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-2 bg-emerald-100 text-emerald-900 px-3.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
-            <Globe className="w-4 h-4 text-emerald-700" />
-            <span>ค้นหาข้อมูลสิทธิ & ระเบียบราชการออนไลน์ (Web Search Tool)</span>
+    <section id="search" className="scroll-mt-20 py-20 bg-[#f5f5f7] border-b border-black/[0.06] relative overflow-hidden">
+      <div className="mx-auto w-full max-w-5xl px-4 sm:px-6 space-y-8 relative z-10">
+        
+        {/* Section Header */}
+        <div className="text-center space-y-3 max-w-3xl mx-auto">
+          <div className="inline-flex items-center gap-2 rounded-full border border-black/[0.08] bg-white/90 px-4 py-1 text-xs font-bold text-slate-800 shadow-xs backdrop-blur-md">
+            <Globe className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Live Real-Time Welfare Search</span>
           </div>
-          <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
-            ค้นหาสิทธิประโยชน์ & กายอุปกรณ์ออนไลน์
+          <h2 className="text-3xl sm:text-5xl font-black text-slate-900 tracking-tight leading-tight">
+            สืบค้นสิทธิประโยชน์ & ระเบียบทางการ
           </h2>
-          <p className="text-slate-600 text-sm sm:text-base font-medium">
-            ค้นหาข้อมูลระเบียบราชการ สิทธิบัตรทอง ประกันสังคม กระทรวง พม. และกองทุนสุขภาพตำบล ได้ทันทีโดยไม่ต้องสแกนบัตรประชาชน
+          <p className="text-slate-500 text-sm sm:text-base font-normal max-w-xl mx-auto">
+            ดึงข้อมูลแบบ Real-time จาก สปสช., กระทรวง พม., ประกันสังคม และ อปท. โดยตรง ไม่ต้องพึ่งพา Mock Data
           </p>
         </div>
 
-        {/* Search Input Box */}
-        <div className="bg-white p-5 sm:p-6 rounded-3xl border border-slate-200 shadow-md space-y-4 max-w-4xl mx-auto">
+        {/* Apple Glass Search Card */}
+        <div className="apple-glass-card p-6 sm:p-8 rounded-[32px] space-y-5 shadow-xl shadow-black/[0.03]">
           <form
             onSubmit={(e) => {
               e.preventDefault();
               handleSearch();
             }}
-            className="flex flex-col sm:flex-row gap-2.5"
+            className="flex flex-col sm:flex-row gap-3"
           >
             <div className="relative flex-1">
               <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -89,23 +91,23 @@ export function WebSearchSection() {
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="พิมพ์สิทธิที่ต้องการค้นหา เช่น ผ้าอ้อมผู้ใหญ่, เตียงผู้ป่วย พม., ทำฟันฟรี, สิทธิ 30 บาท..."
-                className="w-full pl-12 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-base text-slate-900 focus:outline-none focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium"
+                placeholder="พิมพ์สิทธิที่ต้องการค้นหา เช่น ผ้าอ้อมผู้ใหญ่, เตียงผู้ป่วย พม., สิทธิ 30 บาท..."
+                className="w-full pl-12 pr-4 py-4 bg-white/90 border border-black/[0.08] rounded-2xl text-sm sm:text-base text-slate-900 focus:outline-none focus:ring-4 focus:ring-emerald-500/15 focus:border-emerald-500 transition-all font-medium placeholder:text-slate-400 shadow-xs"
               />
             </div>
             <button
               type="submit"
               disabled={loading}
-              className="flex items-center justify-center gap-2 bg-primary hover:opacity-90 active:scale-98 text-primary-foreground font-bold px-7 py-3.5 rounded-2xl text-base shadow-md transition-all shrink-0"
+              className="apple-button-primary flex items-center justify-center gap-2 px-8 py-4 text-sm sm:text-base font-bold shrink-0 cursor-pointer"
             >
-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
               <span>ค้นหาข้อมูล</span>
             </button>
           </form>
 
           {/* Quick Keyword Pills */}
           <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
-            <span className="text-slate-500 font-semibold flex items-center gap-1">
+            <span className="text-slate-400 font-semibold flex items-center gap-1">
               <Sparkles className="w-3.5 h-3.5 text-amber-500" /> คำค้นยอดนิยม:
             </span>
             {POPULAR_QUERIES.map((keyword, i) => (
@@ -116,7 +118,7 @@ export function WebSearchSection() {
                   setQuery(keyword);
                   handleSearch(keyword);
                 }}
-                className="bg-slate-100 hover:bg-emerald-50 hover:text-emerald-800 text-slate-700 font-medium px-3 py-1.5 rounded-xl border border-slate-200 transition-all cursor-pointer"
+                className="bg-black/[0.03] hover:bg-emerald-50 hover:text-emerald-800 text-slate-700 font-medium px-3 py-1.5 rounded-full border border-black/[0.04] transition-all duration-200 cursor-pointer active:scale-95"
               >
                 {keyword}
               </button>
@@ -124,9 +126,9 @@ export function WebSearchSection() {
           </div>
 
           {/* Filter by Agency */}
-          <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 text-xs">
-            <span className="text-slate-500 font-semibold flex items-center gap-1">
-              <Filter className="w-3.5 h-3.5 text-slate-400" /> กรองตามหน่วยงาน:
+          <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-black/[0.06] text-xs">
+            <span className="text-slate-400 font-semibold flex items-center gap-1">
+              <Filter className="w-3.5 h-3.5 text-slate-400" /> กรองหน่วยงาน:
             </span>
             {AGENCY_FILTERS.map((f) => (
               <button
@@ -136,10 +138,10 @@ export function WebSearchSection() {
                   setSelectedAgency(f.id);
                   handleSearch(undefined, f.id);
                 }}
-                className={`px-3 py-1.5 rounded-xl font-bold transition-all ${
+                className={`px-3.5 py-1.5 rounded-full font-bold transition-all duration-200 cursor-pointer active:scale-95 ${
                   selectedAgency === f.id
                     ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    : 'bg-black/[0.03] text-slate-600 hover:bg-black/[0.06]'
                 }`}
               >
                 {f.label}
@@ -150,52 +152,56 @@ export function WebSearchSection() {
 
         {/* Results Stream */}
         {loading && (
-          <div className="bg-white rounded-3xl p-10 text-center border border-slate-200 shadow-xs max-w-4xl mx-auto space-y-3">
-            <Loader2 className="w-7 h-7 animate-spin text-emerald-600 mx-auto" />
-            <p className="text-slate-600 font-semibold text-sm">กำลังสืบค้นข้อมูลระเบียบและสิทธิประโยชน์ออนไลน์...</p>
+          <div className="apple-glass-card rounded-[28px] p-12 text-center space-y-3">
+            <Loader2 className="w-8 h-8 animate-spin text-emerald-600 mx-auto" />
+            <p className="text-slate-600 font-semibold text-sm">กำลังสืบค้นระเบียบราชการและสิทธิประโยชน์แบบ Real-time...</p>
           </div>
         )}
 
         {!loading && hasSearched && (
-          <div className="max-w-4xl mx-auto space-y-3">
-            <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
-              <BookOpen className="w-5 h-5 text-emerald-600" />
-              ผลการค้นหา ({results.length} รายการ)
-            </h3>
+          <div className="space-y-4 animate-apple-fade-in">
+            <div className="flex items-center justify-between px-2">
+              <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                <BookOpen className="w-4 h-4 text-emerald-600" />
+                พบข้อมูลระเบียบและสิทธิ ({results.length} รายการ)
+              </h3>
+            </div>
             {results.length === 0 ? (
-              <div className="bg-white rounded-3xl p-8 text-center border border-slate-200 text-slate-500 text-sm">
+              <div className="apple-glass-card rounded-[28px] p-10 text-center text-slate-500 text-sm">
                 ไม่พบข้อมูลตรงกับคำค้นหา ลองค้นหาด้วยคำอื่น เช่น &quot;สิทธิบัตรทอง&quot;, &quot;ผ้าอ้อมผู้ใหญ่&quot;
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-3">
+              <div className="grid grid-cols-1 gap-3.5">
                 {results.map((res, idx) => (
                   <div
                     key={idx}
-                    className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs hover:border-emerald-300 transition-all space-y-2"
+                    className="apple-glass-card rounded-3xl p-6 space-y-2.5 group"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <span className="bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-extrabold px-2.5 py-0.5 rounded-full">
+                      <span className="bg-emerald-100/70 text-emerald-900 border border-emerald-200/50 text-[11px] font-bold px-3 py-0.5 rounded-full">
                         {res.agency}
                       </span>
                       {res.verified && (
-                        <span className="flex items-center gap-1 text-teal-700 text-xs font-semibold bg-teal-50 px-2 py-0.5 rounded-md">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-teal-600" /> ข้อมูลระเบียบทางการ
+                        <span className="flex items-center gap-1 text-teal-700 text-xs font-semibold bg-teal-50 px-2.5 py-0.5 rounded-full border border-teal-100">
+                          <CheckCircle2 className="w-3 h-3 text-teal-600" /> ข้อมูลระเบียบทางการ
                         </span>
                       )}
                     </div>
-                    <h4 className="text-base font-bold text-slate-900">{res.title}</h4>
-                    <p className="text-sm text-slate-600 leading-relaxed">{res.snippet}</p>
-                    <div className="pt-2 flex items-center justify-between border-t border-slate-100 text-xs">
-                      <span className="text-slate-500">แหล่งข้อมูล: {res.source}</span>
+                    <h4 className="text-base sm:text-lg font-bold text-slate-900 group-hover:text-emerald-800 transition-colors">
+                      {res.title}
+                    </h4>
+                    <p className="text-sm text-slate-600 leading-relaxed font-normal">{res.snippet}</p>
+                    <div className="pt-3 flex items-center justify-between border-t border-black/[0.05] text-xs">
+                      <span className="text-slate-400 font-medium">{res.source}</span>
                       {res.url && (
                         <a
                           href={res.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-emerald-700 hover:text-emerald-900 font-bold"
+                          className="inline-flex items-center gap-1 text-emerald-700 hover:text-emerald-900 font-bold group/link"
                         >
-                          <span>ดูเว็บทางการ</span>
-                          <ExternalLink className="w-3 h-3" />
+                          <span>เปิดเว็บทางการ</span>
+                          <ArrowUpRight className="w-3.5 h-3.5 transition-transform group-hover/link:translate-x-0.5 group-hover/link:-translate-y-0.5" />
                         </a>
                       )}
                     </div>

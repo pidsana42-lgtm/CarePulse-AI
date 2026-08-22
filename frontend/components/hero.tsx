@@ -1,58 +1,77 @@
-import { ShieldCheck, Stethoscope, Phone, ArrowRight } from 'lucide-react'
+import { ShieldCheck, Stethoscope, Phone, ArrowRight, Sparkles } from 'lucide-react'
 
 const HOTLINES = [
-  { color: 'text-emerald-600', number: '1330', label: 'สปสช. บัตรทอง' },
-  { color: 'text-teal-600', number: '1300', label: 'พม. สวัสดิการ' },
-  { color: 'text-blue-600', number: '1506', label: 'ประกันสังคม' },
-  { color: 'text-red-500', number: '1669', label: 'ฉุกเฉิน UCEP' },
+  { color: 'text-emerald-700 bg-emerald-50/80 border-emerald-200/60', number: '1330', label: 'สปสช. บัตรทอง' },
+  { color: 'text-teal-700 bg-teal-50/80 border-teal-200/60', number: '1300', label: 'พม. สวัสดิการ' },
+  { color: 'text-blue-700 bg-blue-50/80 border-blue-200/60', number: '1506', label: 'ประกันสังคม' },
+  { color: 'text-rose-700 bg-rose-50/80 border-rose-200/60', number: '1669', label: 'ฉุกเฉิน UCEP' },
 ]
 
 export function Hero() {
   return (
-    <section className="border-b border-slate-200 bg-gradient-to-b from-slate-50 to-white">
-      <div className="mx-auto flex w-full max-w-6xl flex-col items-center gap-10 px-4 py-16 text-center sm:px-6 md:py-24">
+    <section className="relative overflow-hidden border-b border-black/[0.06] bg-[#fbfbfd] py-16 sm:py-24">
+      {/* Apple Ambient Radial Glows */}
+      <div className="apple-ambient-glow -top-40 -left-20" />
+      <div className="apple-ambient-glow -bottom-40 -right-20 bg-teal-500/10" />
+
+      <div className="relative z-10 mx-auto flex w-full max-w-5xl flex-col items-center gap-10 px-4 sm:px-6 text-center">
+
+        {/* Apple Pill Badge */}
+        <div className="animate-apple-fade-in inline-flex items-center gap-2 rounded-full border border-black/[0.08] bg-white/80 px-4 py-1.5 text-xs font-semibold text-slate-800 shadow-xs backdrop-blur-md transition-all duration-300 hover:border-emerald-500/30 hover:scale-105">
+          <Sparkles className="size-3.5 text-emerald-600 animate-pulse" />
+          <span>Proactive Healthcare Welfare Navigator</span>
+        </div>
 
         {/* Headline */}
-        <div className="space-y-4 max-w-3xl">
-          <h1 className="text-4xl font-black leading-tight text-slate-900 md:text-6xl tracking-tight">
+        <div className="space-y-5 max-w-3xl animate-apple-fade-in" style={{ animationDelay: '0.1s' }}>
+          <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-6xl md:text-7xl leading-[1.08]">
             ไม่พลาดทุกสิทธิ<br />
-            <span className="text-emerald-600">การรักษาและสวัสดิการ</span>
+            <span className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 bg-clip-text text-transparent">
+              การรักษาและสวัสดิการ
+            </span>
           </h1>
-          <p className="text-lg leading-relaxed text-slate-500 max-w-2xl mx-auto font-medium">
-            แก้ปัญหา <strong className="text-slate-700">Information Asymmetry</strong> รวบรวมสิทธิข้ามกระทรวง
+          <p className="text-base sm:text-xl leading-relaxed text-slate-600 max-w-2xl mx-auto font-normal">
+            แก้ปัญหา <strong className="font-semibold text-slate-900">Information Asymmetry</strong> เชื่อมต่อสิทธิข้ามกระทรวง
             ทั้งบัตรทอง ประกันสังคม กองทุนสุขภาพตำบล และ พม.
-            ประเมินสิทธิขอรับกายอุปกรณ์ฟรีด้วย AI
+            พร้อมประเมินสิทธิขอรับกายอุปกรณ์ฟรีด้วย AI
           </p>
         </div>
 
-        {/* CTA Buttons */}
-        <div className="flex flex-col sm:flex-row gap-3 w-full max-w-lg">
+        {/* Apple CTA Buttons */}
+        <div className="flex flex-col sm:flex-row gap-3.5 w-full max-w-md animate-apple-fade-in" style={{ animationDelay: '0.2s' }}>
           <a
             href="/assessment"
-            className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-6 py-4 text-base font-bold text-white shadow-md transition-all hover:bg-emerald-700 active:scale-95"
+            className="apple-button-primary flex-1 flex items-center justify-center gap-2 py-4 px-6 text-sm sm:text-base font-bold shadow-lg shadow-emerald-700/20"
           >
             <ShieldCheck className="size-5" />
-            ประเมินสิทธิสุขภาพ
-            <ArrowRight className="size-4" />
+            <span>ประเมินสิทธิสุขภาพ</span>
+            <ArrowRight className="size-4 opacity-80" />
           </a>
           <a
             href="/scan"
-            className="flex flex-1 items-center justify-center gap-2 rounded-2xl border-2 border-emerald-500 bg-white px-6 py-4 text-base font-bold text-emerald-800 transition-all hover:bg-emerald-50 active:scale-95"
+            className="apple-button-secondary flex-1 flex items-center justify-center gap-2 py-4 px-6 text-sm sm:text-base font-bold text-slate-900 shadow-sm"
           >
             <Stethoscope className="size-5 text-emerald-600" />
-            สแกนใบรับรองแพทย์
+            <span>สแกนใบรับรองแพทย์</span>
           </a>
         </div>
 
-        {/* Hotlines */}
-        <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-slate-500 pt-2 border-t border-slate-100 w-full max-w-2xl">
-          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider w-full text-center mb-1">สายด่วนสำคัญ</span>
-          {HOTLINES.map((h, i) => (
-            <span key={i} className={`flex items-center gap-1.5 font-semibold ${h.color}`}>
-              <Phone className="size-3.5" />
-              {h.label} <strong>{h.number}</strong>
-            </span>
-          ))}
+        {/* Hotlines Grid / Pills */}
+        <div className="pt-6 border-t border-black/[0.06] w-full max-w-3xl animate-apple-fade-in" style={{ animationDelay: '0.3s' }}>
+          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest block mb-3">
+            สายด่วนประสานสิทธิทางการ
+          </span>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            {HOTLINES.map((h, i) => (
+              <div
+                key={i}
+                className={`flex flex-col items-center justify-center py-2.5 px-3 rounded-2xl border text-xs font-semibold backdrop-blur-sm transition-all duration-300 hover:scale-105 ${h.color}`}
+              >
+                <span className="text-[11px] opacity-80">{h.label}</span>
+                <span className="text-base font-black tracking-tight mt-0.5">{h.number}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </section>
