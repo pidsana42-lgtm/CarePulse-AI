@@ -41,6 +41,6 @@ Thumbs.db
 .env.test.local
 .env.production.local
 
-# Databases & local data
-data/
+# Logs & temp databases
 *.log
+

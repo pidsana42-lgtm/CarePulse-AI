@@ -1,0 +1,8 @@
+{"prompt":"Solve 2 + 2. Return only <answer>...</answer>.","answer":"4"}
+{"prompt":"Solve 7 * 6. Return only <answer>...</answer>.","answer":"42"}
+{"prompt":"Solve 15 - 9. Return only <answer>...</answer>.","answer":"6"}
+{"prompt":"Solve 8 + 13. Return only <answer>...</answer>.","answer":"21"}
+{"prompt":"Solve 12 / 3. Return only <answer>...</answer>.","answer":"4"}
+{"prompt":"Solve 5 * 5. Return only <answer>...</answer>.","answer":"25"}
+{"prompt":"Solve 19 - 4. Return only <answer>...</answer>.","answer":"15"}
+{"prompt":"Solve 3 + 11. Return only <answer>...</answer>.","answer":"14"}

@@ -1,8 +1,10 @@
 import logging
+import os
 from typing import List, Dict, Any, Optional
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import Distance, VectorParams, PointStruct
 from app.core.config import settings
+from app.services.data_loader import data_loader
 
 logger = logging.getLogger(__name__)
 
@@ -42,66 +44,70 @@ class VectorDBManager:
         exists = any(c.name == self.collection_name for c in collections)
         
         if not exists:
-            # 384 dimensions for standard compact embeddings or 768 / 1536
+            # 384 dimensions for compact embeddings
             self.client.create_collection(
                 collection_name=self.collection_name,
                 vectors_config=VectorParams(size=384, distance=Distance.COSINE),
             )
             logger.info(f"Created vector collection '{self.collection_name}'.")
-            self._seed_default_benefits()
+            self._seed_policies_from_scg_data()
 
-    def _seed_default_benefits(self):
-        """Seed initial standard Thai healthcare benefits policies into Vector DB."""
-        # Simple simulated seed points for semantic matching demo
-        seed_data = [
-            {
-                "id": 1,
-                "title": "สิทธิหลักประกันสุขภาพแห่งชาติ (บัตรทอง 30 บาทรักษาทุกที่)",
-                "description": "ครอบคลุมการรักษาพยาบาล ค่ายา ค่าผ่าตัด การส่งเสริมสุขภาพและป้องกันโรคสำหรับคนไทยที่ไม่มีสิทธิสวัสดิการอื่น",
-                "scheme_code": "UC",
-                "coverage_rate": 100
-            },
-            {
-                "id": 2,
-                "title": "สิทธิประกันสังคม (มาตรา 33, 39, 40)",
-                "description": "สิทธิการรักษาพยาบาลสำหรับผู้ประกันตน คลอดบุตร ทุพพลภาพ เจ็บป่วยฉุกเฉิน และทันตกรรมประจำปี 900 บาท",
-                "scheme_code": "SSO",
-                "coverage_rate": 100
-            },
-            {
-                "id": 3,
-                "title": "สิทธิสวัสดิการรักษาพยาบาลข้าราชการ (CSMBS)",
-                "description": "สิทธิสำหรับข้าราชการ ลูกจ้างประจำ และครอบครัว (บิดา มารดา คู่สมรส บุตร) เบิกจ่ายตรง รพ.รัฐ และเอกชนตามเกณฑ์",
-                "scheme_code": "CSMBS",
-                "coverage_rate": 100
-            },
-            {
-                "id": 4,
-                "title": "สิทธิผู้สูงอายุ 60 ปีขึ้นไป และเบี้ยยังชีพ",
-                "description": "บริการช่องทางพิเศษ (Fast track) คลินิกผู้สูงอายุ ผ้าอ้อมผู้ใหญ่ และการตรวจคัดกรองสุขภาพประจำปีฟรี",
-                "scheme_code": "ELDERLY_CARE",
-                "coverage_rate": 100
-            }
-        ]
+    def _seed_policies_from_scg_data(self):
+        """Seed policies and manual chunks from imported SCG datasets."""
+        policies = data_loader.get_all_policies()
+        chunks = data_loader.get_all_manual_chunks()
         
         points = []
-        for item in seed_data:
-            # Generate deterministic dummy 384-d vector for bootstrap
-            dummy_vector = [0.05] * 384
-            dummy_vector[item["id"] % 384] = 0.95
+        point_id = 1
+
+        # 1. Ingest Policies
+        for policy in policies:
+            dummy_vector = [0.03] * 384
+            dummy_vector[point_id % 384] = 0.97
+            
             points.append(
                 PointStruct(
-                    id=item["id"],
+                    id=point_id,
                     vector=dummy_vector,
-                    payload=item
+                    payload={
+                        "policy_id": policy.get("id"),
+                        "title": policy.get("title", "ระเบียบสิทธิการรักษาพยาบาล"),
+                        "description": policy.get("summary", ""),
+                        "source": policy.get("source", "NHSO"),
+                        "eligibility_rules": policy.get("eligibility_rules", {}),
+                        "keywords": policy.get("keywords", []),
+                        "scheme_code": policy.get("source", "UC"),
+                    }
                 )
             )
+            point_id += 1
+
+        # 2. Ingest Manual RAG Chunks
+        for chunk in chunks:
+            dummy_vector = [0.04] * 384
+            dummy_vector[point_id % 384] = 0.96
             
-        self.client.upsert(
-            collection_name=self.collection_name,
-            points=points
-        )
-        logger.info("Default healthcare policy vectors seeded.")
+            points.append(
+                PointStruct(
+                    id=point_id,
+                    vector=dummy_vector,
+                    payload={
+                        "chunk_id": chunk.get("chunk_id"),
+                        "title": chunk.get("title", "ข้อมูลความรู้สิทธิการรักษา"),
+                        "description": chunk.get("content", chunk.get("text", "")),
+                        "source": chunk.get("source", "RAG Knowledge"),
+                        "scheme_code": "GENERAL",
+                    }
+                )
+            )
+            point_id += 1
+
+        if points:
+            self.client.upsert(
+                collection_name=self.collection_name,
+                points=points
+            )
+            logger.info(f"Successfully seeded {len(points)} knowledge points from SCG datasets into Vector DB.")
 
 
 vector_db = VectorDBManager()

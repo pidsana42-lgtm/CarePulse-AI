@@ -1,0 +1,4 @@
+{"problem":"Read two integers from standard input and print their sum.","tests":[{"input":"2 3\n","output":"5\n"},{"input":"10 -4\n","output":"6\n"},{"input":"0 0\n","output":"0\n"}]}
+{"problem":"Read a string from standard input and print it reversed.","tests":[{"input":"hello\n","output":"olleh\n"},{"input":"abcde\n","output":"edcba\n"},{"input":"x\n","output":"x\n"}]}
+{"problem":"Read an integer n and print n factorial.","tests":[{"input":"3\n","output":"6\n"},{"input":"5\n","output":"120\n"},{"input":"1\n","output":"1\n"}]}
+{"problem":"Read integers from one line and print the largest value.","tests":[{"input":"1 9 3\n","output":"9\n"},{"input":"-7 -2 -5\n","output":"-2\n"},{"input":"42\n","output":"42\n"}]}
