@@ -2,6 +2,7 @@ import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import { IBM_Plex_Sans_Thai } from 'next/font/google'
 import './globals.css'
+import AiAdvisor from '@/components/AiAdvisor'
 
 const ibmPlexSansThai = IBM_Plex_Sans_Thai({
   weight: ['300', '400', '500', '600', '700'],
@@ -11,10 +12,11 @@ const ibmPlexSansThai = IBM_Plex_Sans_Thai({
 })
 
 export const metadata: Metadata = {
-  title: 'สิทธิ์ดี | ตรวจสอบสิทธิรักษาพยาบาลและประมาณค่าใช้จ่าย',
+  title: 'CarePulse AI | ผู้ช่วยค้นหาสิทธิสุขภาพและสวัสดิการข้ามกระทรวง (สปสช. พม. กองทุนสุขภาพตำบล)',
   description:
-    'ตรวจสอบสิทธิประโยชน์ทางการแพทย์ของคุณ ทั้งบัตรทอง ประกันสังคม และสวัสดิการข้าราชการ พร้อมประมาณค่ารักษาพยาบาล เพื่อวางแผนการเงินด้านสุขภาพอย่างมั่นใจ',
-  generator: 'v0.app',
+    'แก้ปัญหาการไม่รู้สิทธิ (Information Asymmetry) ค้นหาสิทธิบัตรทอง ประกันสังคม กองทุนสุขภาพตำบล และ พม. พร้อมระบบขอรับกายอุปกรณ์ (ผ้าอ้อมผู้ใหญ่ เตียง รถเข็น) และเครื่องมือ Web Search',
+  generator: 'CarePulse AI',
+
   icons: {
     icon: [
       {
@@ -48,8 +50,10 @@ export default function RootLayout({
     <html lang="th" className={`bg-background ${ibmPlexSansThai.variable}`}>
       <body className="font-sans antialiased">
         {children}
+        <AiAdvisor />
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>
   )
 }
+

@@ -47,17 +47,7 @@ public class FastAPIAIService {
             return response.getBody();
         } catch (Exception e) {
             log.error("Error communicating with FastAPI AI service: {}", e.getMessage());
-            // Fallback response
-            return Map.of(
-                "document_id", "DOC-FALLBACK-001",
-                "document_type", documentType,
-                "status", "processed_with_fallback",
-                "masked_preview", Map.of(
-                    "name", "สม*** ใจ**",
-                    "citizen_id", "1-1004-XXXXX-XX-3"
-                ),
-                "ocr_confidence", 0.95
-            );
+            throw new RuntimeException("ไม่สามารถเชื่อมต่อกับบริการ FastAPI AI Service ได้: " + e.getMessage(), e);
         }
     }
 }

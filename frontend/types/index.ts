@@ -1,12 +1,32 @@
+export interface OfficialReference {
+  title: string;
+  legal_act: string;
+  agency: string;
+  url: string;
+}
+
 export interface HealthcareRightDetail {
   scheme_code: string;
   scheme_name: string;
   is_eligible: boolean;
+  responsible_agency?: string;
+  contact_channel?: string;
   coverage_summary: string;
   free_items: string[];
   co_pay_items: string[];
+  eligible_equipment?: string[];
+  estimated_coverage_value?: string;
+  estimated_out_of_pocket?: string;
+  official_references?: OfficialReference[];
   how_to_use: string;
   hospital_network: string;
+}
+
+export interface CostPlanningSummary {
+  total_estimated_benefit_value: string;
+  estimated_out_of_pocket: string;
+  eligible_equipment_count: number;
+  participating_agencies: string[];
 }
 
 export interface AssessmentResult {
@@ -18,9 +38,12 @@ export interface AssessmentResult {
     occupation_status: string;
     registered_province: string;
     urgency_level: string;
+    chronic_conditions?: string[];
   };
   primary_right: HealthcareRightDetail;
   additional_rights: HealthcareRightDetail[];
+  cost_planning?: CostPlanningSummary;
+  all_official_references?: OfficialReference[];
   recommendations: string[];
   pdpa_protected: boolean;
 }

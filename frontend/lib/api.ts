@@ -3,67 +3,20 @@ import { AssessmentInput, AssessmentResult, DocumentScanResult } from '@/types';
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
 export async function submitAssessment(input: AssessmentInput): Promise<AssessmentResult> {
-  try {
-    const response = await fetch(`${API_BASE_URL}/eligibility/assess`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(input),
-    });
+  const response = await fetch(`${API_BASE_URL}/eligibility/assess`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(input),
+  });
 
-    if (!response.ok) {
-      throw new Error(`Assessment failed with status ${response.status}`);
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('Error submitting assessment:', error);
-    // Fallback Mock Data for standalone front-end demonstration
-    return {
-      assessment_id: 'EVAL-DEMO-001',
-      assessed_at: new Date().toISOString(),
-      patient_summary: {
-        citizen_id_masked: input.citizen_id ? `1-XXXX-XXXXX-XX-9` : 'ไม่ได้ระบุ',
-        age: input.age,
-        occupation_status: input.occupation_status,
-        registered_province: input.registered_province,
-        urgency_level: input.urgency_level,
-      },
-      primary_right: {
-        scheme_code: 'UC',
-        scheme_name: 'สิทธิหลักประกันสุขภาพแห่งชาติ (บัตรทอง 30 บาทรักษาทุกที่)',
-        is_eligible: true,
-        coverage_summary: 'ครอบคลุมการรักษาพยาบาลทุกโรคตามมาตรฐาน และยาในบัญชียาหลักแห่งชาติฟรี',
-        free_items: [
-          'ตรวจรักษาโรคทั่วไป และโรคเรื้อรัง',
-          'ผ่าตัดและนอนพักรักษาตัวใน รพ. ตามสิทธิ',
-          'รับยาฟรีใกล้บ้านที่ร้านยาคุณภาพ',
-          'ส่งเสริมสุขภาพและป้องกันโรค',
-        ],
-        co_pay_items: ['ยานอกบัญชียาหลักที่ไม่มีข้อบ่งชี้ทางการแพทย์', 'ค่าห้องพิเศษส่วนเกิน'],
-        how_to_use: 'ใช้บัตรประชาชนใบเดียว เข้ารับบริการที่หน่วยบริการปฐมภูมิ หรือโรงพยาบาลตามสิทธิ',
-        hospital_network: 'หน่วยบริการปฐมภูมิ คลินิกชุมชนอบอุ่น และ รพ.รัฐประจำเขต',
-      },
-      additional_rights: input.age >= 60 ? [
-        {
-          scheme_code: 'ELDERLY_BENEFIT',
-          scheme_name: 'สิทธิและสวัสดิการผู้สูงอายุ (60 ปีขึ้นไป)',
-          is_eligible: true,
-          coverage_summary: 'บริการช่องทางด่วน คลินิกผู้สูงอายุ ผ้าอ้อมผู้ใหญ่ และวัคซีนประจำปีฟรี',
-          free_items: ['ผ้าอ้อมผู้ใหญ่และแผ่นรองซับ', 'ตรวจคัดกรองภาวะสมองเสื่อม', 'วัคซีนไข้หวัดใหญ่ฟรีทุกปี'],
-          co_pay_items: [],
-          how_to_use: 'ติดต่อแผนกผู้สูงอายุ หรือ รพ.สต. ใกล้บ้าน',
-          hospital_network: 'สถานพยาบาลของรัฐทุกแห่ง',
-        }
-      ] : [],
-      recommendations: [
-        'ท่านสามารถใช้บริการ 30 บาทรักษาทุกที่ ได้ที่หน่วยบริการปฐมภูมิหรือคลินิกชุมชนอบอุ่น',
-        'หากเจ็บป่วยฉุกเฉินวิกฤตถึงแก่ชีวิต สามารถใช้สิทธิ UCEP เข้ารักษา รพ. ใดก็ได้ ฟรี 72 ชม. แรก (โทร 1669)',
-      ],
-      pdpa_protected: true,
-    };
+  if (!response.ok) {
+    const errorBody = await response.text().catch(() => '');
+    throw new Error(`การประเมินสิทธิล้มเหลว (Status ${response.status}): ${errorBody}`);
   }
+
+  return await response.json();
 }
 
 export async function uploadDocument(file: File, documentType: string = 'id_card'): Promise<DocumentScanResult> {
@@ -71,35 +24,166 @@ export async function uploadDocument(file: File, documentType: string = 'id_card
   formData.append('file', file);
   formData.append('document_type', documentType);
 
+  const response = await fetch(`${API_BASE_URL}/documents/scan`, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text().catch(() => '');
+    throw new Error(`การอัปโหลดและสแกนเอกสารล้มเหลว (Status ${response.status}): ${errorBody}`);
+  }
+
+  return await response.json();
+}
+
+export interface SearchResultItem {
+  title: string;
+  snippet: string;
+  source: string;
+  url: string;
+  agency: string;
+  type: string;
+  verified: boolean;
+}
+
+export interface SearchResponse {
+  query: string;
+  total: number;
+  results: SearchResultItem[];
+  official_portals: Array<{ name: string; domain: string; hotline: string }>;
+}
+
+export async function searchWelfareAndPolicies(query: string, agency?: string): Promise<SearchResponse> {
+  const url = new URL(`${API_BASE_URL}/search`);
+  url.searchParams.set('q', query);
+  if (agency) {
+    url.searchParams.set('agency', agency);
+  }
+
+  const response = await fetch(url.toString(), {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`การค้นหาล้มเหลว (${response.status})`);
+  }
+
+  return await response.json();
+}
+
+export interface ChatMessageItem {
+
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+}
+
+export interface ChatAdvisorResponse {
+  content: string;
+  model: string;
+  retrieved_contexts?: Array<{ title: string; scheme: string }>;
+  provider: string;
+  status: string;
+}
+
+export async function askAiAdvisor(
+  messages: ChatMessageItem[],
+  useRag: boolean = true
+): Promise<ChatAdvisorResponse> {
+  const response = await fetch(`${API_BASE_URL}/ai/chat`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      messages,
+      use_rag: useRag,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text().catch(() => '');
+    throw new Error(`AI advisor request failed (${response.status}): ${errorBody}`);
+  }
+
+  return await response.json();
+}
+
+export async function streamAiAdvisor(
+  messages: ChatMessageItem[],
+  onChunk: (delta: string) => void,
+  onDone: () => void,
+  onError: (error: string) => void,
+  onWebSources?: (sources: Array<{ title: string; url: string; snippet: string }>) => void,
+  useRag: boolean = true
+): Promise<void> {
   try {
-    const response = await fetch(`${API_BASE_URL}/documents/scan`, {
+    const response = await fetch(`${API_BASE_URL}/ai/chat/stream`, {
       method: 'POST',
-      body: formData,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        messages,
+        use_rag: useRag,
+      }),
     });
 
     if (!response.ok) {
-      throw new Error(`Upload failed with status ${response.status}`);
+      const errorBody = await response.text().catch(() => '');
+      throw new Error(`AI stream failed (${response.status}): ${errorBody}`);
     }
 
-    return await response.json();
-  } catch (error) {
-    console.error('Error uploading document:', error);
-    // Offline simulated response
-    return {
-      document_id: 'DOC-MOCK-99',
-      uploaded_at: new Date().toISOString(),
-      document_type: documentType,
-      extracted_data: {
-        name: 'นาย สมศักดิ์ สุขใจ',
-        citizen_id: '1100400892143',
-        birth_date: '2505-08-12',
-      },
-      masked_preview: {
-        name: 'สม*** สุ***',
-        citizen_id: '1-1004-XXXXX-XX-3',
-      },
-      ocr_confidence: 0.95,
-      message: 'ประมวลผลและ Mask ข้อมูลส่วนบุคคล (PDPA) สำเร็จ',
-    };
+    const reader = response.body?.getReader();
+    if (!reader) {
+      throw new Error('ReadableStream not supported');
+    }
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || !trimmed.startsWith('data: ')) continue;
+        const dataStr = trimmed.slice(6);
+        if (dataStr === '[DONE]') {
+          onDone();
+          return;
+        }
+        try {
+          const parsed = JSON.parse(dataStr);
+          if (parsed.error) {
+            onError(parsed.error);
+            return;
+          }
+          if (parsed.web_sources && onWebSources) {
+            onWebSources(parsed.web_sources);
+          }
+          if (parsed.delta) {
+            onChunk(parsed.delta);
+          }
+        } catch {
+          // ignore parse errors on partial frames
+        }
+      }
+    }
+    onDone();
+  } catch (err: any) {
+    onError(err.message || 'Stream error');
   }
 }
+
+
+
+

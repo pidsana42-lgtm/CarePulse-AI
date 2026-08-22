@@ -1,5 +1,6 @@
 import { SiteHeader } from '@/components/site-header'
 import { Hero } from '@/components/hero'
+import { WebSearchSection } from '@/components/WebSearchSection'
 import { SchemeChecker } from '@/components/scheme-checker'
 import { CostEstimator } from '@/components/cost-estimator'
 import { ComparisonTable } from '@/components/comparison-table'
@@ -12,6 +13,7 @@ export default function Home() {
       <SiteHeader />
       <main className="flex-1">
         <Hero />
+        <WebSearchSection />
         <SchemeChecker />
         <CostEstimator />
         <ComparisonTable />

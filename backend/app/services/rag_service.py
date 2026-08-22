@@ -43,14 +43,8 @@ class SemanticRAGService:
             return results
         except Exception as e:
             logger.error(f"Error during semantic vector search: {e}")
-            return [
-                SemanticSearchResult(
-                    title="สิทธิหลักประกันสุขภาพแห่งชาติ (บัตรทอง 30 บาท)",
-                    description="ครอบคลุมการรักษาพยาบาลทุกโรคและยาในบัญชียาหลัก",
-                    scheme_code="UC",
-                    similarity_score=0.95
-                )
-            ]
+            return []
+
 
 
 rag_service = SemanticRAGService()

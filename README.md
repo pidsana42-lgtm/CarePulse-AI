@@ -121,9 +121,49 @@ CarePulse-AI/
 
 ---
 
+---
+
+## 🤖 ระบบ AI LLM บน Modal Cloud GPU (Qwen 3.8 27B FP8)
+
+ระบบเชื่อมต่อกับโมเดลประมวลผลภาษาธรรมชาติ **Qwen3.8-27B-FP8** ผ่าน **Modal GPU Infrastructure** โดยใช้ **vLLM (OpenAI-compatible Server)** พร้อม Tensor Parallelism บน Dual A10G GPUs:
+
+- **Modal Endpoint**: `https://netnaphat0305--carepulse-qwen-38-27b-serve.modal.run`
+- **OpenAI Compatible Base URL**: `https://netnaphat0305--carepulse-qwen-38-27b-serve.modal.run/v1`
+- **Deployment Script**: [modal_qwen.py](file:///Users/netnaphat/Desktop/CDG/CarePulse-AI/modal_qwen.py)
+- **AI Endpoints**:
+  - `POST /api/v1/ai/chat`: ปรึกษาสิทธิประโยชน์และการรักษาพยาบาลร่วมกับ Semantic RAG
+  - `POST /api/v1/ai/explain`: สร้างคำอธิบายสรุปสิทธิและข้อปฏิบัติเฉพาะบุคคล
+  - `GET /api/v1/ai/status`: ตรวจสอบสถานะการเชื่อมต่อไปยัง Modal GPU LLM
+
+---
+
 ## 🚀 วิธีการติดตั้งและรันระบบ (Quick Start)
 
-### 1. รันครบทั้ง 7 Services ด้วย Docker Compose
+### 1. รันด่วนในเครื่องแบบ Local Development (FastAPI + Next.js)
+
+```bash
+./start_local.sh
+```
+
+- **Citizen Interface**: [http://localhost:3000](http://localhost:3000) (พร้อม Floating AI Chatbot Qwen 3.8)
+- **FastAPI Backend Swagger**: [http://localhost:8000/docs](http://localhost:8000/docs)
+- **AI Health Status**: [http://localhost:8000/api/v1/ai/status](http://localhost:8000/api/v1/ai/status)
+
+---
+
+### 2. ดีพลอย / อัปเดตโมเดลบน Modal
+
+```bash
+# ติดตั้ง Modal token
+modal token set --token-id <TOKEN_ID> --token-secret <TOKEN_SECRET> --profile=netnaphat0305
+
+# สั่ง Deploy vLLM Qwen3.8-27B-FP8 ขึ้น Modal
+modal deploy modal_qwen.py
+```
+
+---
+
+### 3. รันครบทั้ง 7 Services ด้วย Docker Compose
 
 ```bash
 docker compose up --build
@@ -141,7 +181,7 @@ docker compose up --build
 
 ---
 
-### 2. ติดตั้งขึ้น Kubernetes Cluster
+### 4. ติดตั้งขึ้น Kubernetes Cluster
 
 ```bash
 kubectl apply -f k8s/namespace.yaml
@@ -149,3 +189,4 @@ kubectl apply -f k8s/spring-boot-deployment.yaml
 kubectl apply -f k8s/fastapi-ai-deployment.yaml
 kubectl apply -f k8s/frontend-deployment.yaml
 ```
+

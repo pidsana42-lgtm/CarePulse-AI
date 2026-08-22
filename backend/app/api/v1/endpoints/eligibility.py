@@ -20,12 +20,15 @@ async def assess_healthcare_rights(request: CitizenAssessmentRequest):
         # Run calculation rules engine
         result = eligibility_engine.calculate_rights(request)
 
-        # Store in MongoDB (with PDPA sanitized data)
-        db = get_database()
-        if db is not None:
-            sanitized_record = pdpa_masker.sanitize_health_data(result.model_dump())
-            await db["assessment_history"].insert_one(sanitized_record)
-            logger.info(f"Assessment {result.assessment_id} recorded securely in MongoDB.")
+        # Store in MongoDB (with PDPA sanitized data) if available
+        try:
+            db = get_database()
+            if db is not None:
+                sanitized_record = pdpa_masker.sanitize_health_data(result.model_dump())
+                await db["assessment_history"].insert_one(sanitized_record)
+                logger.info(f"Assessment {result.assessment_id} recorded securely in MongoDB.")
+        except Exception as db_err:
+            logger.warning(f"MongoDB persistence skipped (database offline or unreachable): {db_err}")
 
         return result
     except Exception as e:

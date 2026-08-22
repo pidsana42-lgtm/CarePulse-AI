@@ -1,4 +1,4 @@
-import { HeartPulse } from 'lucide-react'
+import { HeartPulse, Globe, ShieldCheck } from 'lucide-react'
 
 export function SiteFooter() {
   return (
@@ -6,62 +6,62 @@ export function SiteFooter() {
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-12 sm:px-6 md:flex-row md:justify-between">
         <div className="flex max-w-sm flex-col gap-3">
           <div className="flex items-center gap-2">
-            <span className="flex size-8 items-center justify-center rounded-lg bg-primary">
+            <span className="flex size-8 items-center justify-center rounded-xl bg-primary shadow-xs">
               <HeartPulse
                 className="size-4 text-primary-foreground"
                 aria-hidden="true"
               />
             </span>
-            <span className="font-bold text-foreground">สิทธิ์ดี</span>
+            <span className="font-extrabold text-foreground text-lg">CarePulse AI</span>
           </div>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            เครื่องมือช่วยคนไทยตรวจสอบสิทธิรักษาพยาบาลและประมาณค่าใช้จ่าย
-            เพื่อวางแผนการเงินด้านสุขภาพอย่างมั่นใจ
-            ข้อมูลนี้เป็นการประมาณการเบื้องต้น ไม่ใช่คำแนะนำทางการแพทย์หรือการเงิน
+            ผู้ช่วย AI ค้นหาสิทธิสุขภาพและสวัสดิการข้ามกระทรวง (สปสช. พม. กองทุนสุขภาพตำบล ประกันสังคม กรมบัญชีกลาง) เพื่อแก้ปัญหา Information Asymmetry และช่วยเหลือกลุ่มเปราะบาง
           </p>
         </div>
         <div className="grid grid-cols-2 gap-8 sm:grid-cols-2">
           <div className="flex flex-col gap-2">
-            <h3 className="text-sm font-semibold text-foreground">
-              สายด่วนสำคัญ
+            <h3 className="text-sm font-bold text-foreground">
+              สายด่วนภาครัฐ 24 ชั่วโมง
             </h3>
             <ul className="flex flex-col gap-1.5 text-sm text-muted-foreground">
-              <li>สปสช. (บัตรทอง) 1330</li>
-              <li>ประกันสังคม 1506</li>
-              <li>เจ็บป่วยฉุกเฉิน 1669</li>
-              <li>กรมบัญชีกลาง 02-270-6400</li>
+              <li>สปสช. (บัตรทอง 30 บาท) <strong>1330</strong></li>
+              <li>กระทรวง พม. (สวัสดิการ/คนพิการ) <strong>1300</strong></li>
+              <li>ประกันสังคม (สปส.) <strong>1506</strong></li>
+              <li>เจ็บป่วยฉุกเฉินวิกฤต (UCEP) <strong>1669</strong></li>
             </ul>
           </div>
           <div className="flex flex-col gap-2">
-            <h3 className="text-sm font-semibold text-foreground">เมนู</h3>
-            <ul className="flex flex-col gap-1.5 text-sm">
+            <h3 className="text-sm font-bold text-foreground">เครื่องมือ & เมนู</h3>
+            <ul className="flex flex-col gap-2 text-sm">
               <li>
                 <a
-                  href="#check-rights"
-                  className="text-muted-foreground transition-colors hover:text-foreground"
+                  href="/search"
+                  className="text-emerald-700 font-semibold transition-colors hover:text-emerald-900 flex items-center gap-1.5"
                 >
-                  ตรวจสอบสิทธิ
+                  <Globe className="w-3.5 h-3.5" />
+                  ค้นหาสิทธิออนไลน์ (Web Search)
                 </a>
               </li>
               <li>
                 <a
-                  href="#estimator"
-                  className="text-muted-foreground transition-colors hover:text-foreground"
+                  href="/assessment"
+                  className="text-emerald-700 font-semibold transition-colors hover:text-emerald-900 flex items-center gap-1.5"
                 >
-                  ประมาณค่ารักษา
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  ประเมินสิทธิ & กายอุปกรณ์
                 </a>
               </li>
               <li>
                 <a
-                  href="#compare"
+                  href="/#estimator"
                   className="text-muted-foreground transition-colors hover:text-foreground"
                 >
-                  เปรียบเทียบสิทธิ
+                  ประมาณค่ารักษาพยาบาล
                 </a>
               </li>
               <li>
                 <a
-                  href="#faq"
+                  href="/#faq"
                   className="text-muted-foreground transition-colors hover:text-foreground"
                 >
                   คำถามที่พบบ่อย
@@ -72,7 +72,7 @@ export function SiteFooter() {
         </div>
       </div>
       <div className="border-t border-border py-4 text-center text-xs text-muted-foreground">
-        สิทธิ์ดี — สร้างเพื่อคนไทยทุกคน | ข้อมูลอ้างอิงจาก สปสช. สปส. และกรมบัญชีกลาง
+        CarePulse AI — พัฒนาเพื่อคนไทยทุกคน | ฐานข้อมูลเชื่อมโยง สปสช., กระทรวง พม., กองทุนสุขภาพตำบล (กปท.), สปส. และกรมบัญชีกลาง
       </div>
     </footer>
   )

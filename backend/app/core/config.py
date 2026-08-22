@@ -35,6 +35,13 @@ class Settings(BaseSettings):
     MASK_LOGS: bool = True
     ENABLE_DATA_ENCRYPTION: bool = True
 
+    # LLM & Modal vLLM Configuration (Qwen3.8-27B-FP8)
+    MODAL_LLM_URL: str = ""
+    LLM_BASE_URL: str = "http://localhost:8000/v1"
+    LLM_MODEL: str = "Qwen/Qwen3.8-27B-FP8"
+    LLM_API_KEY: str = "EMPTY"
+    LLM_TIMEOUT: int = 120
+
     model_config = SettingsConfigDict(
         env_file=".env",
         case_sensitive=True,
