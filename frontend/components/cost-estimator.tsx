@@ -12,7 +12,6 @@ import {
   type HospitalType,
 } from '@/lib/health-data'
 import { cn } from '@/lib/utils'
-import { EquipmentPriceTable } from '@/components/equipment-price-table'
 
 export function CostEstimator() {
   const [schemeId, setSchemeId] = useState<SchemeId>('ucs')
@@ -243,9 +242,6 @@ export function CostEstimator() {
             </div>
           </div>
         </div>
-
-        {/* Medical Equipment Reference Prices */}
-        <EquipmentPriceTable />
       </div>
     </section>
   )

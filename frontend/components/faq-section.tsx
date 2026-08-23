@@ -1,5 +1,3 @@
-import { Sparkles, HelpCircle } from 'lucide-react'
-
 const faqs = [
   {
     q: 'จะรู้ได้อย่างไรว่าตัวเองมีสิทธิรักษาพยาบาลแบบไหน?',
@@ -35,10 +33,6 @@ export function FaqSection() {
     >
       <div className="mx-auto w-full max-w-4xl px-4 sm:px-6 space-y-10">
         <div className="flex flex-col items-center gap-3 text-center">
-          <div className="liquid-glass-pill px-4 py-1 text-xs font-black text-emerald-900 inline-flex items-center gap-1.5 shadow-xs">
-            <HelpCircle className="size-3.5 text-emerald-600" />
-            Frequently Asked Questions
-          </div>
           <h2 className="text-3xl sm:text-5xl font-black tracking-tight text-slate-950">
             คำถามที่พบบ่อย
           </h2>

@@ -6,8 +6,9 @@ import { HeartPulse, Stethoscope, Globe, ShieldCheck, Menu, X, Sparkles } from '
 const NAV_LINKS = [
   { href: '/assessment', label: 'ประเมินสิทธิสุขภาพ', icon: ShieldCheck },
   { href: '/scan', label: 'สแกนใบรับรองแพทย์', icon: Stethoscope },
-  { href: '/search', label: 'ค้นหาออนไลน์', icon: Globe },
+  { href: '/search', label: 'ถาม AI', icon: Globe },
   { href: '/#estimator', label: 'ประมาณค่ารักษา' },
+  { href: '/#equipment', label: 'อุปกรณ์ฟรี' },
   { href: '/#faq', label: 'FAQ' },
 ];
 

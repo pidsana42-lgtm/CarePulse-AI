@@ -47,6 +47,18 @@ export default function SearchPage() {
   const messagesRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const autoSentRef = useRef(false);
+
+  // Auto-send the question passed from the home page (/search?q=...)
+  useEffect(() => {
+    if (autoSentRef.current) return;
+    const q = new URLSearchParams(window.location.search).get('q');
+    if (q && q.trim()) {
+      autoSentRef.current = true;
+      handleSubmit(q);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleAttach = (file: File | null) => {
     if (imagePreview) {

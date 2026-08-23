@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { PackageCheck, Building2, ChevronDown, ExternalLink } from 'lucide-react';
+import { Building2, ChevronDown, ExternalLink } from 'lucide-react';
 
 interface EquipmentItem {
   item: string;
@@ -92,17 +92,11 @@ export function EquipmentPriceTable() {
   const totalValue = '150,000+ บาท';
 
   return (
-    <div className="liquid-glass rounded-[32px] p-6 sm:p-8 shadow-xl space-y-5 border border-white/80">
+    <div className="space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
-        <div className="space-y-1">
-          <h3 className="text-lg sm:text-xl font-black text-slate-900 flex items-center gap-2">
-            <PackageCheck className="w-5 h-5 text-emerald-600" />
-            ราคาอ้างอิงกายอุปกรณ์ทางการแพทย์
-          </h3>
-          <p className="text-xs sm:text-sm text-slate-600 font-medium">
-            เทียบราคาซื้อเองกับสิทธิขอรับฟรีจากหน่วยงานรัฐ — อ้างอิงราคากลางจัดซื้อของ พม. และอัตราจ่าย สปสช.
-          </p>
-        </div>
+        <p className="text-xs sm:text-sm text-slate-600 font-medium max-w-xl">
+          เทียบราคาซื้อเองกับสิทธิขอรับฟรีจากหน่วยงานรัฐ — อ้างอิงราคากลางจัดซื้อของ พม. และอัตราจ่าย สปสช.
+        </p>
         <div className="liquid-glass-pill px-4 py-2 text-xs font-black text-emerald-900 shrink-0">
           มูลค่าที่ขอฟรีได้ต่อคน: {totalValue}
         </div>

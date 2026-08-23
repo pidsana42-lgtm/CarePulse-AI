@@ -25,7 +25,7 @@ export function SchemeChecker() {
   const scheme = schemes.find((s) => s.id === selected) ?? schemes[0]
 
   return (
-    <section id="check-rights" className="scroll-mt-20 py-20 relative overflow-hidden">
+    <section id="check-rights" className="scroll-mt-20 py-20 bg-[#f5f5f7] border-b border-black/[0.06] relative overflow-x-clip">
       <div className="mx-auto w-full max-w-5xl px-4 sm:px-6">
         <div className="mb-10 flex flex-col items-center gap-3 text-center">
           <h2 className="text-3xl sm:text-5xl font-black tracking-tight text-slate-950">

@@ -1,11 +1,4 @@
-import { ShieldCheck, Stethoscope, Phone, ArrowRight, HeartPulse, FileSearch } from 'lucide-react'
-
-const HOTLINES = [
-  { color: 'bg-emerald-500/10 text-emerald-900 border-emerald-500/20', number: '1330', label: 'สปสช. บัตรทอง' },
-  { color: 'bg-teal-500/10 text-teal-900 border-teal-500/20', number: '1300', label: 'พม. สวัสดิการ' },
-  { color: 'bg-blue-500/10 text-blue-900 border-blue-500/20', number: '1506', label: 'ประกันสังคม' },
-  { color: 'bg-rose-500/10 text-rose-900 border-rose-500/20', number: '1669', label: 'ฉุกเฉิน UCEP' },
-]
+import { ShieldCheck, Stethoscope, ArrowRight } from 'lucide-react'
 
 export function Hero() {
   return (
@@ -49,24 +42,6 @@ export function Hero() {
             <Stethoscope className="size-5 text-emerald-600" />
             <span>สแกนใบรับรองแพทย์</span>
           </a>
-        </div>
-
-        {/* Hotlines Liquid Glass Grid */}
-        <div className="pt-6 w-full max-w-3xl animate-apple-fade-in" style={{ animationDelay: '0.3s' }}>
-          <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest block mb-3">
-            สายด่วนประสานสิทธิทางการ
-          </span>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {HOTLINES.map((h, i) => (
-              <div
-                key={i}
-                className={`liquid-glass-card rounded-[22px] p-3.5 text-xs font-bold transition-all duration-300 ${h.color}`}
-              >
-                <span className="text-[11px] opacity-75 block">{h.label}</span>
-                <span className="text-lg font-black tracking-tight mt-0.5 block">{h.number}</span>
-              </div>
-            ))}
-          </div>
         </div>
       </div>
     </section>
