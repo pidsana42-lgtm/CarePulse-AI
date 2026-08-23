@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { SiteHeader } from '@/components/site-header';
 import ChatAssessmentCard from '@/components/chat-assessment-card';
+import { MarkdownText } from '@/components/markdown-text';
 import { streamAiAdvisor, searchWelfareAndPolicies, uploadDocument, SearchResultItem, ChatMessageItem } from '@/lib/api';
 import {
   Send,
@@ -39,8 +40,8 @@ interface AiMessage {
   assessmentForm?: boolean;
 }
 
-// Questions about rights/benefits get an inline assessment form attached to the reply
-const ASSESSMENT_INTENT = /สิทธิ|ประเมิน|สวัสดิการ|เบิก|ขอรับ|วางแผน|ค่ารักษา|บัตรทอง|ประกันสังคม|ข้าราชการ/;
+// Questions about rights/benefits/equipment get an inline assessment form attached to the reply
+const ASSESSMENT_INTENT = /สิทธิ|ประเมิน|สวัสดิการ|เบิก|ขอรับ|วางแผน|ค่ารักษา|บัตรทอง|ประกันสังคม|ข้าราชการ|ติดเตียง|เตียง|รถเข็น|ผ้าอ้อม|ออกซิเจน|คนพิการ|กายอุปกรณ์|ดูแลผู้ป่วย/;
 
 export default function SearchPage() {
   const [messages, setMessages] = useState<AiMessage[]>([]);
@@ -305,7 +306,7 @@ export default function SearchPage() {
                       {/* AI Text Bubble */}
                       <div className="liquid-glass rounded-[28px] rounded-tl-md px-5 py-4 text-sm text-slate-900 leading-relaxed shadow-md">
                         {msg.content ? (
-                          <p className="whitespace-pre-line font-medium">{msg.content}</p>
+                          <MarkdownText content={msg.content} className="font-medium" />
                         ) : msg.isStreaming ? (
                           <span className="flex items-center gap-2 text-slate-500 font-medium text-xs">
                             <Loader2 className="w-4 h-4 animate-spin text-emerald-600" />
