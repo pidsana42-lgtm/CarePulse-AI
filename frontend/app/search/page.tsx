@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { SiteHeader } from '@/components/site-header';
+import ChatAssessmentCard from '@/components/chat-assessment-card';
 import { streamAiAdvisor, searchWelfareAndPolicies, uploadDocument, SearchResultItem, ChatMessageItem } from '@/lib/api';
 import {
   Send,
@@ -35,7 +36,11 @@ interface AiMessage {
   webSources?: Array<{ title: string; url: string; snippet: string }>;
   searchResults?: SearchResultItem[];
   isStreaming?: boolean;
+  assessmentForm?: boolean;
 }
+
+// Questions about rights/benefits get an inline assessment form attached to the reply
+const ASSESSMENT_INTENT = /สิทธิ|ประเมิน|สวัสดิการ|เบิก|ขอรับ|วางแผน|ค่ารักษา|บัตรทอง|ประกันสังคม|ข้าราชการ/;
 
 export default function SearchPage() {
   const [messages, setMessages] = useState<AiMessage[]>([]);
@@ -176,7 +181,7 @@ export default function SearchPage() {
           if (last.role === 'assistant') {
             last.content += delta;
           }
-          return [...updated];
+          return updated;
         });
       },
       () => {
@@ -186,8 +191,12 @@ export default function SearchPage() {
           if (last.role === 'assistant') {
             last.isStreaming = false;
             last.searchResults = searchResults;
+            // Attach the inline assessment form when the question is about rights/benefits
+            if (ASSESSMENT_INTENT.test(query)) {
+              last.assessmentForm = true;
+            }
           }
-          return [...updated];
+          return updated;
         });
         setLoading(false);
       },
@@ -369,6 +378,9 @@ export default function SearchPage() {
                           ))}
                         </div>
                       )}
+
+                      {/* Inline eligibility assessment form */}
+                      {!msg.isStreaming && msg.assessmentForm && <ChatAssessmentCard />}
                     </div>
                   </div>
                 )}
