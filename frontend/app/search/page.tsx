@@ -7,10 +7,8 @@ import { MarkdownText } from '@/components/markdown-text';
 import { streamAiAdvisor, searchWelfareAndPolicies, uploadDocument, SearchResultItem, ChatMessageItem } from '@/lib/api';
 import {
   Send,
-  Sparkles,
   Loader2,
   ExternalLink,
-  Globe,
   Bot,
   User,
   RefreshCw,
@@ -19,7 +17,8 @@ import {
   ArrowUpRight,
   ImagePlus,
   X,
-  Stethoscope
+  Stethoscope,
+  ChevronDown
 } from 'lucide-react';
 
 const EXAMPLE_PROMPTS = [
@@ -42,6 +41,33 @@ interface AiMessage {
 
 // Questions about rights/benefits/equipment get an inline assessment form attached to the reply
 const ASSESSMENT_INTENT = /สิทธิ|ประเมิน|สวัสดิการ|เบิก|ขอรับ|วางแผน|ค่ารักษา|บัตรทอง|ประกันสังคม|ข้าราชการ|ติดเตียง|เตียง|รถเข็น|ผ้าอ้อม|ออกซิเจน|คนพิการ|กายอุปกรณ์|ดูแลผู้ป่วย/;
+
+// Compact expandable section — keeps replies clean until the reader wants sources
+function CollapsibleSources({
+  title,
+  count,
+  children,
+}: {
+  title: string;
+  count: number;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  if (count === 0) return null;
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="liquid-glass-pill flex items-center gap-1.5 px-3.5 py-1.5 text-[11px] font-bold text-slate-600 hover:text-emerald-800 transition-all cursor-pointer shadow-sm"
+      >
+        <ChevronDown className={`w-3.5 h-3.5 text-emerald-600 transition-transform duration-300 ${open ? 'rotate-180' : ''}`} />
+        {title} ({count} รายการ)
+      </button>
+      {open && <div className="mt-2.5 space-y-2 animate-apple-fade-in">{children}</div>}
+    </div>
+  );
+}
 
 export default function SearchPage() {
   const [messages, setMessages] = useState<AiMessage[]>([]);
@@ -320,11 +346,7 @@ export default function SearchPage() {
 
                       {/* Web Sources */}
                       {msg.webSources && msg.webSources.length > 0 && (
-                        <div className="space-y-2">
-                          <p className="text-xs font-black text-slate-500 flex items-center gap-1.5 px-1">
-                            <Globe className="w-3.5 h-3.5 text-emerald-600" />
-                            แหล่งข้อมูลที่ AI ใช้ค้นหา:
-                          </p>
+                        <CollapsibleSources title="แหล่งข้อมูลที่ AI ใช้ค้นหา" count={msg.webSources.length}>
                           {msg.webSources.map((src, si) => (
                             <a
                               key={si}
@@ -340,16 +362,12 @@ export default function SearchPage() {
                               </div>
                             </a>
                           ))}
-                        </div>
+                        </CollapsibleSources>
                       )}
 
                       {/* Live Search Results */}
                       {!msg.isStreaming && msg.searchResults && msg.searchResults.length > 0 && (
-                        <div className="space-y-2">
-                          <p className="text-xs font-black text-slate-500 flex items-center gap-1.5 px-1">
-                            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                            เว็บไซต์ทางการที่เกี่ยวข้อง ({msg.searchResults.length} รายการ):
-                          </p>
+                        <CollapsibleSources title="เว็บไซต์ทางการที่เกี่ยวข้อง" count={msg.searchResults.length}>
                           {msg.searchResults.map((res, ri) => (
                             <a
                               key={ri}
@@ -377,7 +395,7 @@ export default function SearchPage() {
                               <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-emerald-600 shrink-0 mt-1 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                             </a>
                           ))}
-                        </div>
+                        </CollapsibleSources>
                       )}
 
                       {/* Inline eligibility assessment form */}

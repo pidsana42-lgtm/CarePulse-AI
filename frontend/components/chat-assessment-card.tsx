@@ -22,7 +22,8 @@ const OCCUPATION_OPTIONS = [
 ];
 
 export default function ChatAssessmentCard() {
-  const [open, setOpen] = useState(true);
+  // Starts collapsed so replies stay clean; expands on click
+  const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AssessmentResult | null>(null);
