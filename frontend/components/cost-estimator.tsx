@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Calculator, Info, Wallet, PiggyBank, Receipt, Sparkles } from 'lucide-react'
+import { Info, Wallet, PiggyBank, Receipt, Sparkles } from 'lucide-react'
 import {
   schemes,
   treatments,
@@ -12,6 +12,7 @@ import {
   type HospitalType,
 } from '@/lib/health-data'
 import { cn } from '@/lib/utils'
+import { EquipmentPriceTable } from '@/components/equipment-price-table'
 
 export function CostEstimator() {
   const [schemeId, setSchemeId] = useState<SchemeId>('ucs')
@@ -44,10 +45,6 @@ export function CostEstimator() {
     >
       <div className="mx-auto w-full max-w-5xl px-4 sm:px-6 space-y-10">
         <div className="flex flex-col items-center gap-3 text-center">
-          <div className="liquid-glass-pill px-4 py-1 text-xs font-black text-emerald-900 inline-flex items-center gap-1.5 shadow-xs">
-            <Calculator className="size-3.5 text-emerald-600" />
-            Medical Out-of-Pocket Estimator
-          </div>
           <h2 className="text-3xl sm:text-5xl font-black tracking-tight text-slate-950">
             ประมาณการค่ารักษาพยาบาล
           </h2>
@@ -120,7 +117,7 @@ export function CostEstimator() {
                     className={cn(
                       'flex cursor-pointer items-start gap-3 rounded-2xl border p-3.5 transition-all duration-200',
                       hospital === h.id
-                        ? 'liquid-glass bg-emerald-50/90 border-emerald-500 shadow-sm ring-2 ring-emerald-500/20'
+                        ? 'bg-emerald-50/90 backdrop-blur-md border-emerald-500 shadow-sm ring-2 ring-emerald-500/20'
                         : 'bg-white/60 border-white/80 hover:bg-white/90',
                     )}
                   >
@@ -246,6 +243,9 @@ export function CostEstimator() {
             </div>
           </div>
         </div>
+
+        {/* Medical Equipment Reference Prices */}
+        <EquipmentPriceTable />
       </div>
     </section>
   )

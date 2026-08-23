@@ -1,4 +1,4 @@
-import { ShieldCheck, Stethoscope, Phone, ArrowRight, Sparkles, HeartPulse, FileSearch } from 'lucide-react'
+import { ShieldCheck, Stethoscope, Phone, ArrowRight, HeartPulse, FileSearch } from 'lucide-react'
 
 const HOTLINES = [
   { color: 'bg-emerald-500/10 text-emerald-900 border-emerald-500/20', number: '1330', label: 'สปสช. บัตรทอง' },
@@ -16,12 +16,6 @@ export function Hero() {
       <div className="liquid-mesh-orb-3 bottom-0 left-1/3" />
 
       <div className="relative z-10 mx-auto flex w-full max-w-5xl flex-col items-center gap-10 px-4 sm:px-6 text-center">
-
-        {/* Liquid Pill Badge */}
-        <div className="animate-apple-fade-in liquid-glass-pill px-4 py-1.5 inline-flex items-center gap-2 text-xs font-extrabold text-slate-800 shadow-md">
-          <Sparkles className="size-3.5 text-emerald-600 animate-pulse" />
-          <span>Proactive Healthcare Welfare Navigator</span>
-        </div>
 
         {/* Headline */}
         <div className="space-y-5 max-w-3xl animate-apple-fade-in" style={{ animationDelay: '0.1s' }}>

@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { searchWelfareAndPolicies, SearchResultItem } from '@/lib/api';
+import React, { useEffect, useRef, useState } from 'react';
+import { searchWelfareAndPolicies, uploadDocument, SearchResultItem, DocumentScanResult } from '@/lib/api';
 import {
   Search,
   Globe,
@@ -11,17 +11,20 @@ import {
   Filter,
   CheckCircle2,
   ExternalLink,
-  ArrowUpRight
+  ArrowUpRight,
+  ImagePlus,
+  X,
+  Stethoscope,
+  PackageCheck
 } from 'lucide-react';
 
-const POPULAR_QUERIES = [
-  'เบิกผ้าอ้อมผู้ใหญ่ กองทุนสุขภาพตำบล',
-  'ขอรับเตียงผู้ป่วย / รถเข็น กระทรวง พม.',
-  'สิทธิ 30 บาทรักษาทุกที่ ต่างจังหวัด',
-  'ทันตกรรมประกันสังคม 900 บาท',
-  'สิทธิฉุกเฉินวิกฤต UCEP 72 ชม.',
-  'เครื่องผลิตออกซิเจน ผู้ป่วยติดเตียง',
-  'ฟอกไตฟรี สปสช.',
+const POPULAR_QUESTIONS = [
+  'แม่ผมติดเตียง ขอเตียงผู้ป่วยฟรีได้ไหม?',
+  'ผ้าอ้อมผู้ใหญ่ เบิกจากกองทุนสุขภาพตำบลยังไง?',
+  'ใช้บัตรทองรักษาที่ต่างจังหวัดได้ไหม?',
+  'ประกันสังคมทำฟัน เบิกได้กี่บาทต่อปี?',
+  'ฉุกเฉิน UCEP เข้าโรงพยาบาลเอกชนได้ไหม?',
+  'ผู้พิการขอรถเข็นจาก พม. ได้อย่างไร?',
 ];
 
 const AGENCY_FILTERS = [
@@ -40,7 +43,32 @@ export function WebSearchSection() {
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
 
-  const handleSearch = async (searchQuery?: string, agency?: string) => {
+  const [attachedFile, setAttachedFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [docResult, setDocResult] = useState<DocumentScanResult | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const resultsRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to results once a search/upload finishes
+  useEffect(() => {
+    if (hasSearched && !loading && !uploading) {
+      resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [hasSearched, loading, uploading]);
+
+  const handleAttach = (file: File | null) => {
+    if (imagePreview) {
+      URL.revokeObjectURL(imagePreview);
+    }
+    setAttachedFile(file);
+    setImagePreview(file && file.type.startsWith('image/') ? URL.createObjectURL(file) : null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const runWebSearch = async (searchQuery?: string, agency?: string) => {
     const targetQuery = (searchQuery !== undefined ? searchQuery : query).trim();
     const q = targetQuery || 'สิทธิประโยชน์บัตรทอง ผ้าอ้อมผู้ใหญ่';
     if (!targetQuery) {
@@ -61,65 +89,134 @@ export function WebSearchSection() {
     }
   };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (attachedFile) {
+      setUploading(true);
+      setHasSearched(true);
+      try {
+        const res = await uploadDocument(attachedFile, 'medical_certificate');
+        setDocResult(res);
+      } catch (err) {
+        console.error('Upload error:', err);
+        setDocResult(null);
+      } finally {
+        setUploading(false);
+        handleAttach(null);
+      }
+      if (query.trim()) {
+        await runWebSearch();
+      }
+      return;
+    }
+
+    setDocResult(null);
+    await runWebSearch();
+  };
+
+  const matchedEquipment: Array<{ item: string; agency: string; cost_saved: string; how_to_claim: string }> =
+    docResult?.extracted_data?.matched_equipment || [];
+
   return (
-    <section id="search" className="scroll-mt-20 py-20 bg-[#f5f5f7] border-b border-black/[0.06] relative overflow-hidden">
+    <section id="search" className="scroll-mt-20 py-20 bg-[#f5f5f7] border-b border-black/[0.06] relative overflow-x-clip">
       <div className="mx-auto w-full max-w-5xl px-4 sm:px-6 space-y-8 relative z-10">
-        
+
         {/* Section Header */}
         <div className="text-center space-y-3 max-w-3xl mx-auto">
           <h2 className="text-3xl sm:text-5xl font-black text-slate-900 tracking-tight leading-tight">
             สืบค้นสิทธิประโยชน์ & ระเบียบทางการ
           </h2>
           <p className="text-slate-500 text-sm sm:text-base font-normal max-w-xl mx-auto">
-            ดึงข้อมูลจาก สปสช., กระทรวง พม., ประกันสังคม และ อปท. โดยตรง
+            พิมพ์คำถามที่อยากรู้ หรือแนบรูปใบรับรองแพทย์ AI จะดึงข้อมูลจาก สปสช., กระทรวง พม., ประกันสังคม และ อปท. ให้โดยตรง
           </p>
         </div>
 
-        {/* Apple Glass Search Card */}
-        <div className="apple-glass-card p-6 sm:p-8 rounded-[32px] space-y-5 shadow-xl shadow-black/[0.03]">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleSearch();
-            }}
-            className="flex flex-col sm:flex-row gap-3"
-          >
-            <div className="relative flex-1">
-              <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+        {/* AI Prompt Card */}
+        <div className="liquid-glass-card p-6 sm:p-8 rounded-[32px] space-y-5 shadow-xl shadow-black/[0.03]">
+          <form onSubmit={handleSubmit} className="space-y-3">
+            {/* Attached Image Preview */}
+            {attachedFile && (
+              <div className="flex items-center gap-3 bg-emerald-50/80 border border-emerald-200/60 rounded-2xl p-3 animate-apple-fade-in">
+                {imagePreview ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={imagePreview} alt={attachedFile.name} className="size-14 rounded-xl object-cover border border-emerald-200/70" />
+                ) : (
+                  <div className="size-14 rounded-xl bg-white flex items-center justify-center border border-emerald-200/70">
+                    <Stethoscope className="w-6 h-6 text-emerald-600" />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold text-emerald-900 truncate">{attachedFile.name}</p>
+                  <p className="text-[11px] text-emerald-700/80 font-medium">พร้อมให้ AI วิเคราะห์ — กดค้นหาเพื่อเริ่มการสแกน</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleAttach(null)}
+                  className="p-1.5 rounded-full hover:bg-emerald-100 text-emerald-700 transition-all cursor-pointer active:scale-90 shrink-0"
+                  aria-label="ลบไฟล์แนบ"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+
+            {/* Prompt Input Capsule */}
+            <div className="flex items-center gap-2.5 bg-white/90 border border-black/[0.08] rounded-[28px] pl-2 pr-2 py-2 shadow-xs focus-within:ring-4 focus-within:ring-emerald-500/15 focus-within:border-emerald-500 transition-all">
+              <label
+                className="size-11 rounded-2xl flex items-center justify-center text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 cursor-pointer transition-all shrink-0"
+                title="แนบรูปใบรับรองแพทย์ หรือเอกสารสิทธิ"
+              >
+                <ImagePlus className="w-5 h-5" />
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*,.pdf"
+                  className="hidden"
+                  onChange={(e) => handleAttach(e.target.files?.[0] || null)}
+                />
+              </label>
               <input
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="พิมพ์สิทธิที่ต้องการค้นหา เช่น ผ้าอ้อมผู้ใหญ่, เตียงผู้ป่วย พม., สิทธิ 30 บาท..."
-                className="w-full pl-12 pr-4 py-4 bg-white/90 border border-black/[0.08] rounded-2xl text-sm sm:text-base text-slate-900 focus:outline-none focus:ring-4 focus:ring-emerald-500/15 focus:border-emerald-500 transition-all font-medium placeholder:text-slate-400 shadow-xs"
+                placeholder="พิมพ์สิ่งที่ต้องการค้นหา เช่น แม่ติดเตียง อยากขอเตียงผู้ป่วยฟรี..."
+                className="flex-1 min-w-0 bg-transparent text-sm sm:text-base text-slate-900 placeholder:text-slate-400 focus:outline-none font-medium"
               />
+              <button
+                type="submit"
+                disabled={loading || uploading || (!query.trim() && !attachedFile)}
+                className="liquid-btn-primary flex items-center justify-center gap-2 size-11 shrink-0 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                aria-label="ค้นหาข้อมูล"
+              >
+                {loading || uploading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <Search className="w-5 h-5" />
+                )}
+              </button>
             </div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="apple-button-primary flex items-center justify-center gap-2 px-8 py-4 text-sm sm:text-base font-bold shrink-0 cursor-pointer"
-            >
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-              <span>ค้นหาข้อมูล</span>
-            </button>
           </form>
 
-          {/* Quick Keyword Pills */}
+          {/* Popular Question Chips */}
           <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
             <span className="text-slate-400 font-semibold flex items-center gap-1">
-             คำค้นยอดนิยม:
+              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+              คำถามที่คนอยากรู้:
             </span>
-            {POPULAR_QUERIES.map((keyword, i) => (
+            {POPULAR_QUESTIONS.map((question, i) => (
               <button
                 key={i}
                 type="button"
                 onClick={() => {
-                  setQuery(keyword);
-                  handleSearch(keyword);
+                  setQuery(question);
+                  setDocResult(null);
+                  handleAttach(null);
+                  runWebSearch(question);
                 }}
                 className="bg-black/[0.03] hover:bg-emerald-50 hover:text-emerald-800 text-slate-700 font-medium px-3 py-1.5 rounded-full border border-black/[0.04] transition-all duration-200 cursor-pointer active:scale-95"
               >
-                {keyword}
+                {question}
               </button>
             ))}
           </div>
@@ -135,7 +232,7 @@ export function WebSearchSection() {
                 type="button"
                 onClick={() => {
                   setSelectedAgency(f.id);
-                  handleSearch(undefined, f.id);
+                  runWebSearch(undefined, f.id);
                 }}
                 className={`px-3.5 py-1.5 rounded-full font-bold transition-all duration-200 cursor-pointer active:scale-95 ${
                   selectedAgency === f.id
@@ -149,9 +246,59 @@ export function WebSearchSection() {
           </div>
         </div>
 
+        {/* Results */}
+        <div ref={resultsRef} className="scroll-mt-28 space-y-4">
+          {/* AI Document Analysis Result */}
+          {uploading && (
+          <div className="liquid-glass-card rounded-[28px] p-12 text-center space-y-3">
+            <Loader2 className="w-8 h-8 animate-spin text-emerald-600 mx-auto" />
+            <p className="text-slate-600 font-semibold text-sm">AI กำลังอ่านและวิเคราะห์เอกสารที่แนบมา (OCR + Qwen Vision)...</p>
+          </div>
+        )}
+
+        {!uploading && docResult && (
+          <div className="liquid-glass-card rounded-[28px] p-6 sm:p-8 space-y-4 animate-apple-fade-in">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                <Stethoscope className="w-4 h-4 text-emerald-600" />
+                ผลการวิเคราะห์เอกสารโดย AI
+              </h3>
+              <span className="text-[11px] font-bold text-teal-700 bg-teal-50 px-2.5 py-0.5 rounded-full border border-teal-100 flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3 text-teal-600" />
+                ความแม่นยำ OCR {(docResult.ocr_confidence * 100).toFixed(0)}%
+              </span>
+            </div>
+            <p className="text-sm text-slate-700 leading-relaxed font-medium whitespace-pre-line">
+              {docResult.extracted_data?.ai_clinical_summary || docResult.message || 'วิเคราะห์เอกสารเรียบร้อยแล้ว'}
+            </p>
+            {matchedEquipment.length > 0 && (
+              <div className="space-y-2.5 pt-1">
+                <p className="text-xs font-black text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
+                  <PackageCheck className="w-3.5 h-3.5 text-amber-600" />
+                  กายอุปกรณ์ที่สามารถขอรับได้:
+                </p>
+                {matchedEquipment.map((eq, i) => (
+                  <div key={i} className="bg-white/80 border border-black/[0.05] rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div className="space-y-0.5">
+                      <p className="text-sm font-bold text-slate-900">{eq.item}</p>
+                      <p className="text-xs text-slate-500 font-medium">{eq.how_to_claim}</p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="bg-emerald-100/70 text-emerald-900 border border-emerald-200/50 text-[11px] font-bold px-3 py-0.5 rounded-full">
+                        {eq.agency}
+                      </span>
+                      <span className="text-xs font-black text-emerald-700">{eq.cost_saved}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Results Stream */}
         {loading && (
-          <div className="apple-glass-card rounded-[28px] p-12 text-center space-y-3">
+          <div className="liquid-glass-card rounded-[28px] p-12 text-center space-y-3">
             <Loader2 className="w-8 h-8 animate-spin text-emerald-600 mx-auto" />
             <p className="text-slate-600 font-semibold text-sm">กำลังสืบค้นระเบียบราชการและสิทธิประโยชน์แบบ Real-time...</p>
           </div>
@@ -166,7 +313,7 @@ export function WebSearchSection() {
               </h3>
             </div>
             {results.length === 0 ? (
-              <div className="apple-glass-card rounded-[28px] p-10 text-center text-slate-500 text-sm">
+              <div className="liquid-glass-card rounded-[28px] p-10 text-center text-slate-500 text-sm">
                 ไม่พบข้อมูลตรงกับคำค้นหา ลองค้นหาด้วยคำอื่น เช่น &quot;สิทธิบัตรทอง&quot;, &quot;ผ้าอ้อมผู้ใหญ่&quot;
               </div>
             ) : (
@@ -174,7 +321,7 @@ export function WebSearchSection() {
                 {results.map((res, idx) => (
                   <div
                     key={idx}
-                    className="apple-glass-card rounded-3xl p-6 space-y-2.5 group"
+                    className="liquid-glass-card rounded-3xl p-6 space-y-2.5 group"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <span className="bg-emerald-100/70 text-emerald-900 border border-emerald-200/50 text-[11px] font-bold px-3 py-0.5 rounded-full">
@@ -210,6 +357,7 @@ export function WebSearchSection() {
             )}
           </div>
         )}
+        </div>
       </div>
     </section>
   );

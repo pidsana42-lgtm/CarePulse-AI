@@ -32,11 +32,13 @@ export default function PageTransition({ children }: { children: React.ReactNode
       style={{
         transition: 'opacity 250ms cubic-bezier(0.16, 1, 0.3, 1), transform 250ms cubic-bezier(0.16, 1, 0.3, 1)',
         opacity: transitionStage === 'leave' ? 0 : 1,
+        // Keep transform "none" at rest so position: sticky children stay on
+        // the compositor — any lingering transform makes them judder on scroll.
         transform: transitionStage === 'leave'
           ? 'translateY(8px) scale(0.995)'
           : transitionStage === 'enter'
           ? 'translateY(-4px) scale(1)'
-          : 'translateY(0) scale(1)',
+          : 'none',
       }}
     >
       {displayChildren}

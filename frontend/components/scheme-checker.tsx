@@ -9,7 +9,6 @@ import {
   Users,
   Briefcase,
   HelpCircle,
-  Sparkles,
 } from 'lucide-react'
 import { schemes, type SchemeId } from '@/lib/health-data'
 import { cn } from '@/lib/utils'
@@ -29,10 +28,6 @@ export function SchemeChecker() {
     <section id="check-rights" className="scroll-mt-20 py-20 relative overflow-hidden">
       <div className="mx-auto w-full max-w-5xl px-4 sm:px-6">
         <div className="mb-10 flex flex-col items-center gap-3 text-center">
-          <div className="liquid-glass-pill px-4 py-1 text-xs font-black text-emerald-900 inline-flex items-center gap-1.5 shadow-xs">
-            <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-            Healthcare Rights Directory
-          </div>
           <h2 className="text-3xl sm:text-5xl font-black tracking-tight text-slate-950">
             ตรวจสอบสิทธิการรักษาของคุณ
           </h2>
@@ -61,7 +56,7 @@ export function SchemeChecker() {
                 className={cn(
                   'flex flex-col items-center gap-2.5 rounded-[24px] p-5 text-center transition-all duration-300 cursor-pointer',
                   active
-                    ? 'liquid-glass bg-emerald-600/90 text-white shadow-xl scale-105 border-emerald-400/50'
+                    ? 'bg-emerald-600/95 backdrop-blur-xl saturate-150 text-white shadow-xl scale-105 ring-2 ring-emerald-400/40 border border-white/40'
                     : 'liquid-glass-card hover:bg-white/90 text-slate-800',
                 )}
               >

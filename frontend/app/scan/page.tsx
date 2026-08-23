@@ -54,7 +54,7 @@ export default function ScanPage() {
     extracted.eligible_schemes || [];
 
   return (
-    <div className="relative min-h-screen flex flex-col overflow-hidden">
+    <div className="relative min-h-screen flex flex-col overflow-x-clip">
       {/* Background Liquid Mesh Orbs */}
       <div className="liquid-mesh-orb-1 top-10 -left-10" />
       <div className="liquid-mesh-orb-2 top-1/3 right-0" />

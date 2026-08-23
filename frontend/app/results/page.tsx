@@ -39,7 +39,7 @@ export default function ResultsPage() {
 
   if (!result) {
     return (
-      <div className="relative min-h-screen flex flex-col overflow-hidden">
+      <div className="relative min-h-screen flex flex-col overflow-x-clip">
         <div className="liquid-mesh-orb-1 top-20 left-10" />
         <SiteHeader />
         <main className="relative z-10 flex-1 py-20 px-4 max-w-xl mx-auto text-center space-y-5">
@@ -65,7 +65,7 @@ export default function ResultsPage() {
   }
 
   return (
-    <div className="relative min-h-screen flex flex-col overflow-hidden">
+    <div className="relative min-h-screen flex flex-col overflow-x-clip">
       {/* Background Liquid Mesh Orbs */}
       <div className="liquid-mesh-orb-1 top-10 -left-10" />
       <div className="liquid-mesh-orb-2 top-1/2 right-0" />
@@ -75,7 +75,7 @@ export default function ResultsPage() {
 
       <main className="relative z-10 flex-1 py-10 px-4 sm:px-6 max-w-4xl mx-auto w-full space-y-7 pb-20 animate-apple-fade-in">
         {/* Header Banner */}
-        <div className="liquid-glass bg-gradient-to-br from-emerald-600/90 via-teal-700/90 to-emerald-800/90 text-white rounded-[36px] p-6 sm:p-9 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-5 border border-white/30">
+        <div className="bg-gradient-to-br from-emerald-600/95 via-teal-700/95 to-emerald-800/95 backdrop-blur-2xl text-white rounded-[36px] p-6 sm:p-9 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-5 border border-white/30">
           <div className="space-y-1.5">
             <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-emerald-200">
               <ShieldCheck className="w-4 h-4  text-emerald-800/90" />

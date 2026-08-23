@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { submitAssessment } from '@/lib/api';
 import { AssessmentInput } from '@/types';
-import { ShieldCheck, ArrowRight, Shield, Sparkles, User, FileText } from 'lucide-react';
+import { ShieldCheck, ArrowRight, Shield, User, FileText } from 'lucide-react';
 import { SiteHeader } from '@/components/site-header';
 import { SiteFooter } from '@/components/site-footer';
 
@@ -65,7 +65,7 @@ export default function AssessmentPage() {
   };
 
   return (
-    <div className="relative min-h-screen flex flex-col overflow-hidden">
+    <div className="relative min-h-screen flex flex-col overflow-x-clip">
       {/* Background Liquid Mesh Orbs */}
       <div className="liquid-mesh-orb-1 top-10 -left-10" />
       <div className="liquid-mesh-orb-2 top-1/2 right-0" />
@@ -75,10 +75,6 @@ export default function AssessmentPage() {
 
       <main className="relative z-10 flex-1 py-10 px-4 sm:px-6 max-w-3xl mx-auto w-full space-y-6 animate-apple-fade-in">
         <div className="text-center space-y-2.5">
-          <div className="liquid-glass-pill px-4 py-1 inline-flex items-center gap-1.5 text-xs font-black text-emerald-900 shadow-sm">
-            <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-            AI Multi-Agency Assessment Engine
-          </div>
           <h1 className="text-3xl sm:text-4xl font-black text-slate-950 tracking-tight">
             แบบประเมินสิทธิการรักษา & สวัสดิการ
           </h1>

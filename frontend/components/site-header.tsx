@@ -8,7 +8,6 @@ const NAV_LINKS = [
   { href: '/scan', label: 'สแกนใบรับรองแพทย์', icon: Stethoscope },
   { href: '/search', label: 'ค้นหาออนไลน์', icon: Globe },
   { href: '/#estimator', label: 'ประมาณค่ารักษา' },
-  { href: '/#compare', label: 'เปรียบเทียบสิทธิ' },
   { href: '/#faq', label: 'FAQ' },
 ];
 
@@ -16,7 +15,7 @@ export function SiteHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <header className="relative pt-4 z-40 px-3 sm:px-6 w-full max-w-6xl mx-auto transition-all duration-300">
+    <header className="sticky top-0 z-40 pt-3 px-3 sm:px-6 w-full max-w-6xl mx-auto">
       <div className="liquid-glass rounded-full px-4 sm:px-6 h-16 flex items-center justify-between shadow-xl">
         {/* Logo */}
         <a href="/" className="flex items-center gap-2.5 shrink-0 group transition-transform duration-300 hover:scale-105 active:scale-95">

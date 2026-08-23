@@ -3,7 +3,6 @@ import { Hero } from '@/components/hero'
 import { WebSearchSection } from '@/components/WebSearchSection'
 import { SchemeChecker } from '@/components/scheme-checker'
 import { CostEstimator } from '@/components/cost-estimator'
-import { ComparisonTable } from '@/components/comparison-table'
 import { FaqSection } from '@/components/faq-section'
 import { SiteFooter } from '@/components/site-footer'
 
@@ -16,7 +15,6 @@ export default function Home() {
         <WebSearchSection />
         <SchemeChecker />
         <CostEstimator />
-        <ComparisonTable />
         <FaqSection />
       </main>
       <SiteFooter />

@@ -2,8 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { SiteHeader } from '@/components/site-header';
-import { SiteFooter } from '@/components/site-footer';
-import { streamAiAdvisor, searchWelfareAndPolicies, SearchResultItem, ChatMessageItem } from '@/lib/api';
+import { streamAiAdvisor, searchWelfareAndPolicies, uploadDocument, SearchResultItem, ChatMessageItem } from '@/lib/api';
 import {
   Send,
   Sparkles,
@@ -15,7 +14,10 @@ import {
   RefreshCw,
   CheckCircle2,
   ChevronRight,
-  ArrowUpRight
+  ArrowUpRight,
+  ImagePlus,
+  X,
+  Stethoscope
 } from 'lucide-react';
 
 const EXAMPLE_PROMPTS = [
@@ -39,11 +41,30 @@ export default function SearchPage() {
   const [messages, setMessages] = useState<AiMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const [attachedFile, setAttachedFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const messagesRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const handleAttach = (file: File | null) => {
+    if (imagePreview) {
+      URL.revokeObjectURL(imagePreview);
+    }
+    setAttachedFile(file);
+    setImagePreview(file && file.type.startsWith('image/') ? URL.createObjectURL(file) : null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // Keep the message list pinned to the latest message (only this container scrolls)
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const el = messagesRef.current;
+    if (el) {
+      el.scrollTop = el.scrollHeight;
+    }
   }, [messages]);
 
   // Auto-resize textarea
@@ -57,7 +78,55 @@ export default function SearchPage() {
 
   const handleSubmit = async (text?: string) => {
     const query = (text ?? input).trim();
-    if (!query || loading) return;
+    if (loading || uploading) return;
+    if (!query && !attachedFile) return;
+
+    // Attached document flow — OCR + AI analysis shown as an assistant reply
+    if (attachedFile) {
+      const file = attachedFile;
+      const label = query
+        ? `${query} (แนบ ${file.name})`
+        : `[แนบรูปใบรับรองแพทย์]: ${file.name}`;
+      setMessages((prev) => [
+        ...prev,
+        { role: 'user', content: label },
+        { role: 'assistant', content: '', isStreaming: true },
+      ]);
+      setInput('');
+      handleAttach(null);
+      setUploading(true);
+
+      try {
+        const res = await uploadDocument(file, 'medical_certificate');
+        const equipment: Array<{ item: string; agency: string; cost_saved: string }> =
+          res.extracted_data?.matched_equipment || [];
+        const eqText = equipment.length
+          ? `\n\nกายอุปกรณ์ที่ขอรับได้:\n${equipment
+              .map((e) => `• ${e.item} (${e.agency}) — ประหยัด ${e.cost_saved}`)
+              .join('\n')}`
+          : '';
+        const summary = `${res.extracted_data?.ai_clinical_summary || res.message || 'วิเคราะห์เอกสารเรียบร้อยแล้ว'}${eqText}`;
+        setMessages((prev) => {
+          const updated = [...prev];
+          updated[updated.length - 1] = { role: 'assistant', content: summary, isStreaming: false };
+          return updated;
+        });
+      } catch (err) {
+        setMessages((prev) => {
+          const updated = [...prev];
+          updated[updated.length - 1] = {
+            role: 'assistant',
+            content: `เกิดข้อผิดพลาดในการอ่านเอกสาร: ${err instanceof Error ? err.message : err}`,
+            isStreaming: false,
+          };
+          return updated;
+        });
+      } finally {
+        setUploading(false);
+      }
+
+      if (!query) return;
+    }
 
     const userMsg: AiMessage = { role: 'user', content: query };
     const assistantMsg: AiMessage = { role: 'assistant', content: '', isStreaming: true };
@@ -145,19 +214,21 @@ export default function SearchPage() {
   const isEmptyState = messages.length === 0;
 
   return (
-    <div className="relative min-h-screen flex flex-col overflow-hidden">
-      {/* Background Liquid Mesh Orbs */}
-      <div className="liquid-mesh-orb-1 top-10 -left-10" />
-      <div className="liquid-mesh-orb-2 top-1/2 right-0" />
-      <div className="liquid-mesh-orb-3 bottom-0 left-1/4" />
+    <div className="relative h-dvh overflow-clip">
+      {/* Background Liquid Mesh Orbs — clipped wrapper so they never create scrollable overflow */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+        <div className="liquid-mesh-orb-1 top-10 -left-10" />
+        <div className="liquid-mesh-orb-2 top-1/2 right-0" />
+        <div className="liquid-mesh-orb-3 bottom-0 left-1/4" />
+      </div>
 
       <SiteHeader />
 
-      <main className="relative z-10 flex-1 flex flex-col max-w-3xl mx-auto w-full px-4 sm:px-6 pb-8">
+      <main className="absolute inset-x-0 top-[84px] bottom-0 z-10 flex flex-col max-w-3xl mx-auto w-full px-4 sm:px-6 pb-4">
 
         {/* Empty State */}
         {isEmptyState && (
-          <div className="flex-1 flex flex-col items-center justify-center gap-8 py-16 text-center animate-apple-fade-in">
+          <div className="flex-1 min-h-0 overflow-y-auto flex flex-col items-center justify-center gap-6 py-10 text-center animate-apple-fade-in">
             <div className="space-y-3">
               <div className="liquid-glass size-20 rounded-full flex items-center justify-center mx-auto shadow-2xl ring-2 ring-white/80">
                 <Bot className="size-10 text-emerald-600" />
@@ -186,9 +257,9 @@ export default function SearchPage() {
           </div>
         )}
 
-        {/* Message Thread */}
+        {/* Message Thread — internal scroll only */}
         {!isEmptyState && (
-          <div className="flex-1 py-6 space-y-6 animate-apple-fade-in">
+          <div ref={messagesRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain py-6 space-y-6 animate-apple-fade-in">
             {messages.map((msg, idx) => (
               <div key={idx}>
                 {msg.role === 'user' ? (
@@ -291,16 +362,18 @@ export default function SearchPage() {
                 )}
               </div>
             ))}
-            <div ref={bottomRef} />
           </div>
         )}
 
-        {/* Input Box — Floating Liquid Capsule */}
-        <div className={`${isEmptyState ? 'mt-0' : 'mt-4'} sticky bottom-4`}>
+        {/* Input Box — anchored at the bottom, never moves */}
+        <div className="pt-3 shrink-0">
           {!isEmptyState && (
             <div className="flex justify-center mb-2">
               <button
-                onClick={() => setMessages([])}
+                onClick={() => {
+                  setMessages([]);
+                  handleAttach(null);
+                }}
                 className="liquid-glass-pill px-3.5 py-1.5 flex items-center gap-1.5 text-xs text-slate-600 font-bold transition-colors cursor-pointer shadow-sm"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
@@ -309,23 +382,62 @@ export default function SearchPage() {
             </div>
           )}
 
+          {/* Attached Image Preview */}
+          {attachedFile && (
+            <div className="flex items-center gap-3 bg-emerald-50/80 border border-emerald-200/60 rounded-2xl p-2.5 mb-2.5 animate-apple-fade-in">
+              {imagePreview ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={imagePreview} alt={attachedFile.name} className="size-12 rounded-xl object-cover border border-emerald-200/70" />
+              ) : (
+                <div className="size-12 rounded-xl bg-white flex items-center justify-center border border-emerald-200/70">
+                  <Stethoscope className="w-5 h-5 text-emerald-600" />
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold text-emerald-900 truncate">{attachedFile.name}</p>
+                <p className="text-[11px] text-emerald-700/80 font-medium">AI จะอ่านและวิเคราะห์เอกสารเมื่อกดส่ง</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleAttach(null)}
+                className="p-1.5 rounded-full hover:bg-emerald-100 text-emerald-700 transition-all cursor-pointer active:scale-90 shrink-0"
+                aria-label="ลบไฟล์แนบ"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
           <div className="liquid-glass rounded-[32px] p-2.5 sm:p-3 flex items-end gap-2.5 shadow-2xl border border-white/90">
+            <label
+              className="size-10 rounded-2xl flex items-center justify-center text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 cursor-pointer transition-all shrink-0 mb-0.5"
+              title="แนบรูปใบรับรองแพทย์ หรือเอกสารสิทธิ"
+            >
+              <ImagePlus className="w-5 h-5" />
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*,.pdf"
+                className="hidden"
+                onChange={(e) => handleAttach(e.target.files?.[0] || null)}
+              />
+            </label>
             <textarea
               ref={textareaRef}
               rows={1}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="อธิบายความต้องการของคุณที่นี่... เช่น แม่ติดเตียงอยากขอเตียงผู้ป่วยฟรี"
-              className="flex-1 resize-none bg-transparent text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none leading-relaxed py-2 px-3 font-medium max-h-40"
-              disabled={loading}
+              placeholder="อธิบายความต้องการของคุณที่นี่..."
+              className="flex-1 resize-none bg-transparent text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none leading-relaxed py-2 px-1 font-medium max-h-40"
+              disabled={loading || uploading}
             />
             <button
               onClick={() => handleSubmit()}
-              disabled={loading || !input.trim()}
+              disabled={loading || uploading || (!input.trim() && !attachedFile)}
               className="liquid-btn-primary size-10 shrink-0 flex items-center justify-center shadow-lg disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
             >
-              {loading ? (
+              {loading || uploading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <Send className="w-4 h-4" />
@@ -333,12 +445,10 @@ export default function SearchPage() {
             </button>
           </div>
           <p className="text-center text-[11px] text-slate-400 mt-2 font-medium">
-            กด Enter ส่ง · Shift+Enter ขึ้นบรรทัดใหม่ · AI ค้นหาจากเว็บทางการแบบ Real-time
+            กด Enter ส่ง · Shift+Enter ขึ้นบรรทัดใหม่ · แนบรูปได้ · AI ค้นหาจากเว็บทางการแบบ Real-time
           </p>
         </div>
       </main>
-
-      <SiteFooter />
     </div>
   );
 }
