@@ -72,9 +72,6 @@ export default function ChatAssessmentCard() {
             <ShieldCheck className="w-4 h-4" />
           </span>
           {result ? 'ผลประเมินสิทธิของคุณ' : 'ประเมินสิทธิข้ามกระทรวงในแชทนี้'}
-          <span className="liquid-glass-pill bg-emerald-100/90 text-emerald-900 text-[10px] px-2 py-0.5 font-black">
-            กรอก 30 วินาที
-          </span>
         </span>
         <ChevronDown
           className={`w-4 h-4 text-slate-500 shrink-0 transition-transform duration-300 ${open ? 'rotate-180' : ''}`}

@@ -8,6 +8,7 @@ import httpx
 from app.core.config import settings
 from app.services.rag_service import rag_service
 from app.services.web_search_service import web_search_service
+from app.services.eligibility_engine import eligibility_engine
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +25,7 @@ CAREPULSE_SYSTEM_PROMPT = """คุณคือ "CarePulse AI Healthcare & Welfa
 3. ตอบให้กระชับ ชัดเจน เข้าใจง่าย ด้วยภาษาไทยที่สุภาพ เป็นมิตร และเห็นอกเห็นใจ
 4. เป็น "ที่ปรึกษาที่ถามกลับ" เหมือนเจ้าหน้าที่มืออาชีพ: หากคำถามของผู้ใช้ยังขาดข้อมูลสำคัญที่จำเป็นต่อการแนะนำอย่างแม่นยำ เช่น อายุ, สิทธิการรักษาหลัก (บัตรทอง/ประกันสังคม/ข้าราชการ), ระดับการช่วยเหลือตัวเองของผู้ป่วย (เดินได้/นั่งรถเข็น/ติดเตียง), พื้นที่ลงทะเบียนรับบริการ, การมีบัตรประจำตัวคนพิการ หรือการมีประกันเอกชน — ให้ตอบภาพรวมสั้นๆ ก่อน 1-2 ย่อหน้า แล้ว "ถามกลับ" ด้วยคำถามสำคัญ 1-2 ข้อ (ไม่เกิน 3 ข้อ) เพื่อรวบรวมข้อมูล เช่น "ขอถามเพิ่มเติมนะครับ คุณยายมีบัตรคนพิการของ พม. หรือไม่ครับ และปัจจุบันช่วยเหลือตัวเองได้ระดับไหนครับ" เมื่อผู้ใช้ตอบกลับมาแล้ว จึงสรุปคำตอบฉบับสมบูรณ์พร้อมแหล่งอ้างอิงทางกฎหมาย
 5. คำถามเชิงข้อมูลทั่วไปที่ไม่ต้องใช้ข้อมูลส่วนบุคคลประกอบ (เช่น "UCEP คืออะไร", "เบอร์ 1330 ใช้ทำอะไร") ให้ตอบได้ทันทีโดยไม่ต้องถามกลับ และห้ามถามซ้ำข้อมูลที่ผู้ใช้เคยบอกไปแล้วในบทสนทนา
+6. คุณมีอำนาจเรียกใช้เครื่องมือ (tools) ด้วยตัวเองตามความจำเป็น: "search_web" สำหรับข้อมูลสดจากอินเทอร์เน็ต, "search_rights_database" สำหรับฐานข้อมูลกฎหมายภายใน, และ "assess_patient_eligibility" สำหรับคำนวณสิทธิข้ามกระทรวงของผู้ป่วย — จงเลือกใช้เองอย่างประหยัด: คำถามทั่วไปที่ตอบได้จากความรู้เดิมไม่ต้องเรียกใดๆ, เรียกเฉพาะเมื่อต้องการข้อมูลจริงหรือการคำนวณ และเมื่อได้ผลจากเครื่องมือแล้วให้สังเคราะห์ตอบโดยอ้างอิงผลนั้น
 """
 
 GREETING_PATTERNS = [
@@ -273,6 +275,180 @@ class LLMService:
 
         return response
 
+    # ------------------------------------------------------------------
+    # Tool Calling (agentic) — the LLM decides which tool to run.
+    # Works with any OpenAI-compatible tool-calling endpoint (Ollama,
+    # vLLM/Modal, OpenRouter, ...). When no LLM is connected the loop
+    # simply fails and the template fallback above answers instead.
+    # ------------------------------------------------------------------
+
+    CAREPULSE_TOOLS = [
+        {
+            "type": "function",
+            "function": {
+                "name": "search_web",
+                "description": "ค้นหาข้อมูลสิทธิสุขภาพ/สวัสดิการ/ระเบียบราชการล่าสุดจากอินเทอร์เน็ตแบบสดๆ (DuckDuckGo) ใช้เมื่อคำถามต้องการข้อมูลเวลาจริงหรือข่าวสารใหม่",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {"type": "string", "description": "คำค้นหาภาษาไทยหรืออังกฤษ"}
+                    },
+                    "required": ["query"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "search_rights_database",
+                "description": "ค้นหาฐานข้อมูลกฎหมายและสิทธิประโยชน์ภายในของ CarePulse (Semantic RAG) เช่น เกณฑ์ พ.ร.บ., ประกาศ สปสช., สิทธิคนพิการ",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {"type": "string", "description": "คำค้นหา เช่น เตียงผู้ป่วย พม., ผ้าอ้อมผู้ใหญ่ กปท."}
+                    },
+                    "required": ["query"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "assess_patient_eligibility",
+                "description": "คำนวณสิทธิการรักษาพยาบาลข้ามกระทรวงของผู้ป่วยแบบเป็นทางการด้วยกฎของรัฐ (สปสช./พม./ประกันสังคม/ประกันเอกชน) เรียกเมื่อผู้ใช้ให้ข้อมูลส่วนบุคคลครบหรืออยากรู้สิทธิของตนเอง",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "age": {"type": "integer", "description": "อายุ (ปี)"},
+                        "occupation_status": {
+                            "type": "string",
+                            "enum": ["senior", "freelance", "private_employee", "gov_employee"],
+                            "description": "สถานะ: senior=ผู้สูงอายุ, freelance=ประชาชนทั่วไป/บัตรทอง, private_employee=พนักงานเอกชน/ประกันสังคม, gov_employee=ข้าราชการ",
+                        },
+                        "has_disability_card": {"type": "boolean", "description": "มีบัตรประจำตัวคนพิการ (พม.) หรือไม่"},
+                        "registered_province": {"type": "string", "description": "จังหวัดที่ลงทะเบียน เช่น กรุงเทพมหานคร"},
+                        "urgency_level": {"type": "string", "enum": ["normal", "urgent", "emergency"], "description": "ความเร่งด่วน"},
+                        "has_private_insurance": {"type": "boolean", "description": "มีประกันเอกชนหรือไม่"},
+                    },
+                    "required": ["age", "occupation_status", "has_disability_card"],
+                },
+            },
+        },
+    ]
+
+    async def _execute_tool(self, name: str, arguments: Dict[str, Any]) -> str:
+        """Runs one tool and returns a compact JSON string for the model."""
+        try:
+            if name == "search_web":
+                results = await web_search_service.search_welfare_and_web(arguments["query"])
+                return json.dumps({"results": results[:4]}, ensure_ascii=False)
+
+            if name == "search_rights_database":
+                hits = rag_service.search_benefits(arguments["query"], top_k=3)
+                return json.dumps({
+                    "results": [
+                        {"title": r.title, "scheme": r.scheme_code, "source_id": r.source_id, "description": r.description}
+                        for r in hits
+                    ]
+                }, ensure_ascii=False)
+
+            if name == "assess_patient_eligibility":
+                from app.models.assessment import CitizenAssessmentRequest
+                request = CitizenAssessmentRequest(
+                    age=arguments.get("age", 60),
+                    occupation_status=arguments.get("occupation_status", "freelance"),
+                    registered_province=arguments.get("registered_province", "กรุงเทพมหานคร"),
+                    has_disability_card=arguments.get("has_disability_card", False),
+                    urgency_level=arguments.get("urgency_level", "normal"),
+                    has_private_insurance=arguments.get("has_private_insurance", False),
+                )
+                result = eligibility_engine.calculate_rights(request)
+                return json.dumps({
+                    "assessment_id": result.assessment_id,
+                    "primary_right": {
+                        "scheme_name": result.primary_right.scheme_name,
+                        "coverage_summary": result.primary_right.coverage_summary,
+                        "responsible_agency": result.primary_right.responsible_agency,
+                    },
+                    "additional_rights": [
+                        {"scheme_name": r.scheme_name, "coverage_summary": r.coverage_summary}
+                        for r in result.additional_rights
+                    ],
+                    "cost_planning": result.cost_planning.dict() if result.cost_planning else None,
+                    "recommendations": result.recommendations[:4],
+                }, ensure_ascii=False)
+
+            return json.dumps({"error": f"unknown tool: {name}"}, ensure_ascii=False)
+        except Exception as e:
+            logger.warning(f"Tool {name} failed: {e}")
+            return json.dumps({"error": str(e)}, ensure_ascii=False)
+
+    async def _chat_with_tools(
+        self,
+        messages: List[Dict[str, Any]],
+        temperature: float = 0.6,
+        max_tokens: int = 768,
+        max_steps: int = 4,
+    ) -> Optional[str]:
+        """Agentic loop: model picks tools, we execute, feed results back, repeat.
+        Returns the final answer text, or None when the LLM is unreachable/doesn't support tools."""
+        endpoint = self.get_api_endpoint()
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {settings.LLM_API_KEY}"
+        }
+        conversation = list(messages)
+        web_sources: List[Dict[str, str]] = []
+
+        try:
+            async with httpx.AsyncClient(timeout=settings.LLM_TIMEOUT) as client:
+                for _step in range(max_steps):
+                    payload = {
+                        "model": settings.LLM_MODEL,
+                        "messages": conversation,
+                        "temperature": temperature,
+                        "max_tokens": max_tokens,
+                        "tools": self.CAREPULSE_TOOLS,
+                    }
+                    response = await client.post(
+                        f"{endpoint}/chat/completions", json=payload, headers=headers
+                    )
+                    if response.status_code != 200:
+                        logger.info(f"Tool-calling LLM unavailable (HTTP {response.status_code}).")
+                        return None
+
+                    data = response.json()
+                    choice = data.get("choices", [{}])[0]
+                    message = choice.get("message", {})
+                    tool_calls = message.get("tool_calls") or []
+
+                    if not tool_calls:
+                        return message.get("content") or ""
+
+                    conversation.append(message)
+                    for tc in tool_calls:
+                        fn = tc.get("function", {})
+                        try:
+                            args = json.loads(fn.get("arguments") or "{}")
+                        except json.JSONDecodeError:
+                            args = {}
+                        logger.info(f"AI tool call: {fn.get('name')}({args})")
+                        result = await self._execute_tool(fn.get("name", ""), args)
+                        if fn.get("name") == "search_web":
+                            try:
+                                web_sources.extend(json.loads(result).get("results", [])[:4])
+                            except Exception:
+                                pass
+                        conversation.append({
+                            "role": "tool",
+                            "tool_call_id": tc.get("id", "call_0"),
+                            "content": result,
+                        })
+        except Exception as e:
+            logger.info(f"Tool-calling loop failed ({e}).")
+            return None
+        return None
+
     async def generate_chat_response(
         self,
         messages: List[Dict[str, str]],
@@ -300,6 +476,21 @@ class LLMService:
 
         endpoint = self.get_api_endpoint()
         model_name = settings.LLM_MODEL
+
+        # 1) Agentic path — let a real tool-calling LLM decide what to look up.
+        tool_messages, _, _ = await self._prepare_messages(messages, use_rag=False, use_web_search=False)
+        agentic_content = await self._chat_with_tools(tool_messages, temperature, max_tokens)
+        if agentic_content:
+            return {
+                "content": agentic_content,
+                "model": model_name,
+                "retrieved_contexts": [],
+                "live_web_sources": [],
+                "provider": "CarePulse Agentic Tool-Calling",
+                "status": "success"
+            }
+
+        # 2) Single-shot enriched path (prefetched RAG + web context).
         full_messages, retrieved_contexts, live_web_sources = await self._prepare_messages(messages, use_rag, use_web_search)
 
         payload = {
@@ -370,6 +561,17 @@ class LLMService:
 
         endpoint = self.get_api_endpoint()
         model_name = settings.LLM_MODEL
+
+        # 1) Agentic path — the LLM chooses tools itself; we stream the final answer.
+        tool_messages, _, _ = await self._prepare_messages(messages, use_rag=False, use_web_search=False)
+        agentic_content = await self._chat_with_tools(tool_messages)
+        if agentic_content:
+            for chunk_text in agentic_content.split(" "):
+                yield f"data: {json.dumps({'delta': chunk_text + ' ', 'model': f'{model_name} (Agent)'})}\n\n"
+                await asyncio.sleep(0.01)
+            yield "data: [DONE]\n\n"
+            return
+
         full_messages, retrieved_contexts, live_web_sources = await self._prepare_messages(messages, use_rag, use_web_search)
 
         if live_web_sources:
