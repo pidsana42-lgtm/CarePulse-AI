@@ -272,6 +272,7 @@ class LLMService:
                     logger.info(f"Gemma-4 Multimodal Vision AI successfully analyzed medical image ({len(content)} chars)")
                     return clean_content if clean_content else content
                 else:
+                    logger.warning(f"Gemma-4 Vision endpoint returned {response.status_code}: {response.text}")
         except Exception as e:
             logger.warning(f"Gemma-4 Vision request error: {e}")
 
