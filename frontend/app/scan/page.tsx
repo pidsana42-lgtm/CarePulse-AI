@@ -22,14 +22,17 @@ import { SiteHeader } from '@/components/site-header';
 import { SiteFooter } from '@/components/site-footer';
 
 const DOC_TYPES = [
-  { id: 'medical_certificate', label: 'ใบรับรองแพทย์ / ผลตรวจ', icon: Stethoscope, desc: 'ใบรับรองทั่วไป, ผลตรวจโรค, บันทึกอาการ' },
-  { id: 'referral_letter', label: 'ใบส่งตัว / บันทึกประวัติ', icon: FileText, desc: 'ใบส่งตัว รพ., บันทึกการรักษา' },
-  { id: 'id_card', label: 'เอกสารแสดงตน / บัตรสิทธิ', icon: ShieldCheck, desc: 'บัตรประชาชน, บัตรประกันสังคม' },
+  { id: 'medical_certificate', label: 'ใบรับรองแพทย์ / ผลตรวจ', icon: Stethoscope, desc: 'ใบรับรองแพทย์ทั่วไป, ผลวินิจฉัยโรค, ระบุความจำเป็นอุปกรณ์' },
+  { id: 'referral_letter', label: 'ใบส่งตัว / บันทึกประวัติ', icon: FileText, desc: 'ใบส่งตัว รพ., สมุดบันทึกการรักษา, ผลแล็บ' },
 ];
 
 export default function ScanPage() {
   const router = useRouter();
   const [docType, setDocType] = useState<string>('medical_certificate');
+  const [citizenId, setCitizenId] = useState<string>('');
+  const [primaryScheme, setPrimaryScheme] = useState<string>('uc_gold_card');
+  const [patientAge, setPatientAge] = useState<number | string>(65);
+  const [hasDisabilityCard, setHasDisabilityCard] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [scanResult, setScanResult] = useState<DocumentScanResult | null>(null);
 
@@ -80,9 +83,9 @@ export default function ScanPage() {
         {/* Document Type Selector */}
         <div className="liquid-glass rounded-[32px] p-6 shadow-xl space-y-3.5">
           <label className="block text-sm font-black text-slate-900">
-            เลือกประเภทเอกสารทางการแพทย์:
+            เลือกประเภทเอกสารทางการแพทย์ที่จะสแกน:
           </label>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {DOC_TYPES.map((item) => {
               const Icon = item.icon;
               const isSelected = docType === item.id;
@@ -91,22 +94,105 @@ export default function ScanPage() {
                   key={item.id}
                   type="button"
                   onClick={() => setDocType(item.id)}
-                  className={`flex flex-col items-start gap-1.5 py-4 px-4.5 rounded-2xl text-left border transition-all duration-200 cursor-pointer ${
+                  className={`flex flex-col items-center justify-center text-center gap-1.5 py-4 px-4.5 rounded-2xl border transition-all duration-200 cursor-pointer ${
                     isSelected
                       ? 'bg-gradient-to-br from-emerald-600 to-teal-700 text-white border-emerald-500 shadow-lg ring-4 ring-emerald-500/20 scale-[1.02]'
                       : 'bg-white/80 text-slate-800 border-black/[0.08] hover:bg-white hover:border-emerald-300'
                   }`}
                 >
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-center gap-2 w-full">
                     <Icon className={`w-4 h-4 shrink-0 ${isSelected ? 'text-white' : 'text-emerald-600'}`} />
                     <span className={`text-sm font-black ${isSelected ? 'text-white' : 'text-slate-900'}`}>{item.label}</span>
                   </div>
-                  <span className={`text-xs font-medium leading-relaxed ${isSelected ? 'text-emerald-50' : 'text-slate-500'}`}>
+                  <span className={`text-xs font-medium leading-relaxed text-center w-full ${isSelected ? 'text-emerald-50' : 'text-slate-500'}`}>
                     {item.desc}
                   </span>
                 </button>
               );
             })}
+          </div>
+        </div>
+
+        {/* Patient & Welfare Rights Manual Input Form (No Need to Scan ID Card) */}
+        <div className="liquid-glass rounded-[32px] p-6 shadow-xl space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <label className="block text-sm font-black text-slate-900 flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              ข้อมูลสิทธิและผู้ป่วย (กรอกข้อมูล ไม่ต้องถ่ายรูปบัตร):
+            </label>
+            <span className="text-[11px] font-bold text-emerald-700 bg-emerald-100/80 px-2.5 py-1 rounded-full flex items-center gap-1">
+              <ShieldCheck className="w-3 h-3" /> ปกป้องข้อมูลตาม PDPA
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {/* Citizen ID (Optional) */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                เลขบัตรประชาชน (13 หลัก - ไม่บังคับ):
+              </label>
+              <input
+                type="text"
+                maxLength={17}
+                value={citizenId}
+                onChange={(e) => setCitizenId(e.target.value)}
+                placeholder="กรอกเลขบัตร 13 หลัก"
+                className="w-full px-3.5 py-2.5 text-xs font-mono font-bold text-slate-800 bg-white/90 border border-black/[0.1] rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+
+            {/* Primary Welfare Scheme */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                สิทธิการรักษาหลัก:
+              </label>
+              <select
+                value={primaryScheme}
+                onChange={(e) => setPrimaryScheme(e.target.value)}
+                className="w-full px-3 py-2.5 text-xs font-bold text-slate-800 bg-white/90 border border-black/[0.1] rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+              >
+                <option value="uc_gold_card">สิทธิบัตรทอง 30 บาท (สปสช.)</option>
+                <option value="social_security_33_39">ประกันสังคม (ม.33 / ม.39)</option>
+                <option value="social_security_40">ประกันสังคม (ม.40)</option>
+                <option value="csmbs">สิทธิสวัสดิการข้าราชการ (CSMBS)</option>
+                <option value="elderly">ผู้สูงอายุ (60 ปีขึ้นไป)</option>
+              </select>
+            </div>
+
+            {/* Age */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                อายุผู้ป่วย (ปี):
+              </label>
+              <input
+                type="number"
+                min={0}
+                max={120}
+                value={patientAge}
+                onChange={(e) => setPatientAge(e.target.value === '' ? '' : parseInt(e.target.value) || 0)}
+                placeholder="ระบุอายุ"
+                className="w-full px-3.5 py-2.5 text-xs font-bold text-slate-800 bg-white/90 border border-black/[0.1] rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-black/[0.04]">
+            <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-700 select-none">
+              <input
+                type="checkbox"
+                checked={hasDisabilityCard}
+                onChange={(e) => setHasDisabilityCard(e.target.checked)}
+                className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer"
+              />
+              มีบัตรประจำตัวคนพิการ (พม.)
+            </label>
+
+            <a
+              href="/assessment"
+              className="text-xs font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1 hover:underline"
+            >
+              ต้องการประเมินสิทธิโดยไม่มีเอกสารแพทย์? <ArrowRight className="w-3.5 h-3.5" />
+            </a>
           </div>
         </div>
 
@@ -120,7 +206,6 @@ export default function ScanPage() {
           <div className="liquid-glass rounded-[32px] p-12 text-center space-y-3 shadow-xl animate-apple-fade-in">
             <RefreshCw className="w-8 h-8 animate-spin text-emerald-600 mx-auto" />
             <p className="text-slate-800 font-black text-base">AI กำลังอ่านและวิเคราะห์เอกสาร...</p>
-            <p className="text-slate-400 text-xs font-semibold">OCR + Qwen Clinical Reasoning Engine</p>
           </div>
         )}
 

@@ -18,7 +18,9 @@ import {
   ImagePlus,
   X,
   Stethoscope,
-  ChevronDown
+  ChevronDown,
+  Brain,
+  Sparkles
 } from 'lucide-react';
 
 const EXAMPLE_PROMPTS = [
@@ -33,10 +35,76 @@ const EXAMPLE_PROMPTS = [
 interface AiMessage {
   role: 'user' | 'assistant';
   content: string;
+  thinking?: string;
+  isThinking?: boolean;
   webSources?: Array<{ title: string; url: string; snippet: string }>;
   searchResults?: SearchResultItem[];
   isStreaming?: boolean;
   assessmentForm?: boolean;
+}
+
+// Collapsible World-Class AI Thinking / Reasoning Accordion
+function ThinkingBox({
+  thinking,
+  isThinking,
+  isStreaming,
+}: {
+  thinking?: string;
+  isThinking?: boolean;
+  isStreaming?: boolean;
+}) {
+  // Start open while thinking or streaming, then can be toggled
+  const [open, setOpen] = useState(true);
+  const [autoCollapsed, setAutoCollapsed] = useState(false);
+
+  // Auto collapse slightly after thinking finishes and final answer is flowing
+  useEffect(() => {
+    if (!isThinking && !isStreaming && thinking && !autoCollapsed) {
+      // Keep it available in accordion
+      setAutoCollapsed(true);
+    }
+  }, [isThinking, isStreaming, thinking, autoCollapsed]);
+
+  if (!thinking && !isThinking) return null;
+
+  return (
+    <div className="mb-3 rounded-[22px] border border-violet-200/70 bg-gradient-to-br from-violet-50/80 via-slate-50/60 to-teal-50/30 backdrop-blur-md overflow-hidden transition-all duration-300 shadow-sm">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between px-4 py-2.5 text-left transition-colors hover:bg-violet-100/30 cursor-pointer select-none"
+      >
+        <div className="flex items-center gap-2.5">
+          <div className={`size-6 rounded-xl flex items-center justify-center shadow-xs transition-all ${
+            isThinking ? 'bg-gradient-to-tr from-violet-600 to-indigo-600 text-white animate-pulse' : 'bg-violet-100 text-violet-700'
+          }`}>
+            <Brain className="w-3.5 h-3.5" />
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-black tracking-tight bg-gradient-to-r from-violet-800 via-indigo-700 to-teal-800 bg-clip-text text-transparent">
+              {isThinking ? 'กำลังคิดวิเคราะห์ข้อกฎหมายและสิทธิ...' : 'กระบวนการคิดวิเคราะห์ (Reasoning Process)'}
+            </span>
+            {isThinking && (
+              <span className="size-2 rounded-full bg-violet-500 animate-ping inline-block ml-0.5" />
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-1 text-slate-400 hover:text-slate-700">
+          <span className="text-[10px] font-bold">{open ? 'ซ่อน' : 'ดูกระบวนการคิด'}</span>
+          <ChevronDown className={`w-3.5 h-3.5 text-violet-600 transition-transform duration-300 ${open ? 'rotate-180' : ''}`} />
+        </div>
+      </button>
+
+      {open && (
+        <div className="px-4.5 pb-3.5 pt-1 text-[11px] font-mono leading-relaxed text-slate-600 border-t border-violet-100/60 bg-white/50 animate-apple-fade-in whitespace-pre-wrap selection:bg-violet-100 max-h-64 overflow-y-auto">
+          {thinking || 'กำลังสืบค้นระเบียบราชการและตรวจสอบสิทธิประโยชน์ที่เกี่ยวข้อง...'}
+          {isThinking && (
+            <span className="inline-block w-1.5 h-3.5 bg-violet-600 animate-pulse ml-1 align-middle rounded-sm" />
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 // Questions about rights/benefits/equipment get an inline assessment form attached to the reply
@@ -151,19 +219,27 @@ export default function SearchPage() {
           : '';
         const summary = `${res.extracted_data?.ai_clinical_summary || res.message || 'วิเคราะห์เอกสารเรียบร้อยแล้ว'}${eqText}`;
         setMessages((prev) => {
-          const updated = [...prev];
-          updated[updated.length - 1] = { role: 'assistant', content: summary, isStreaming: false };
-          return updated;
+          if (prev.length === 0) return prev;
+          const lastIdx = prev.length - 1;
+          return prev.map((msg, i) =>
+            i === lastIdx && msg.role === 'assistant'
+              ? { ...msg, content: summary, isStreaming: false }
+              : msg
+          );
         });
       } catch (err) {
         setMessages((prev) => {
-          const updated = [...prev];
-          updated[updated.length - 1] = {
-            role: 'assistant',
-            content: `เกิดข้อผิดพลาดในการอ่านเอกสาร: ${err instanceof Error ? err.message : err}`,
-            isStreaming: false,
-          };
-          return updated;
+          if (prev.length === 0) return prev;
+          const lastIdx = prev.length - 1;
+          return prev.map((msg, i) =>
+            i === lastIdx && msg.role === 'assistant'
+              ? {
+                  ...msg,
+                  content: `เกิดข้อผิดพลาดในการอ่านเอกสาร: ${err instanceof Error ? err.message : err}`,
+                  isStreaming: false,
+                }
+              : msg
+          );
         });
       } finally {
         setUploading(false);
@@ -173,7 +249,13 @@ export default function SearchPage() {
     }
 
     const userMsg: AiMessage = { role: 'user', content: query };
-    const assistantMsg: AiMessage = { role: 'assistant', content: '', isStreaming: true };
+    const assistantMsg: AiMessage = {
+      role: 'assistant',
+      content: '',
+      thinking: '',
+      isThinking: true,
+      isStreaming: true
+    };
 
     setMessages((prev) => [...prev, userMsg, assistantMsg]);
     setInput('');
@@ -189,64 +271,94 @@ export default function SearchPage() {
     searchWelfareAndPolicies(query).then((res) => {
       searchResults = res.results.slice(0, 5);
       setMessages((prev) => {
-        const updated = [...prev];
-        const last = updated[updated.length - 1];
-        if (last.role === 'assistant') {
-          last.searchResults = searchResults;
-        }
-        return updated;
+        if (prev.length === 0) return prev;
+        const lastIdx = prev.length - 1;
+        return prev.map((msg, i) =>
+          i === lastIdx && msg.role === 'assistant'
+            ? { ...msg, searchResults }
+            : msg
+        );
       });
     }).catch(() => {});
 
-    // Stream AI response
+    // Stream AI response with live thinking process (Pure Immutable State Updates)
     await streamAiAdvisor(
       chatHistory,
       (delta) => {
         setMessages((prev) => {
-          const updated = [...prev];
-          const last = updated[updated.length - 1];
-          if (last.role === 'assistant') {
-            last.content += delta;
-          }
-          return updated;
+          if (prev.length === 0) return prev;
+          const lastIdx = prev.length - 1;
+          return prev.map((msg, i) =>
+            i === lastIdx && msg.role === 'assistant'
+              ? {
+                  ...msg,
+                  isThinking: false,
+                  content: (msg.content || '') + delta,
+                }
+              : msg
+          );
         });
       },
       () => {
         setMessages((prev) => {
-          const updated = [...prev];
-          const last = updated[updated.length - 1];
-          if (last.role === 'assistant') {
-            last.isStreaming = false;
-            last.searchResults = searchResults;
-            // Attach the inline assessment form when the question is about rights/benefits
-            if (ASSESSMENT_INTENT.test(query)) {
-              last.assessmentForm = true;
-            }
-          }
-          return updated;
+          if (prev.length === 0) return prev;
+          const lastIdx = prev.length - 1;
+          return prev.map((msg, i) =>
+            i === lastIdx && msg.role === 'assistant'
+              ? {
+                  ...msg,
+                  isThinking: false,
+                  isStreaming: false,
+                  searchResults,
+                  assessmentForm: ASSESSMENT_INTENT.test(query) ? true : msg.assessmentForm,
+                }
+              : msg
+          );
         });
         setLoading(false);
       },
       (err) => {
         setMessages((prev) => {
-          const updated = [...prev];
-          const last = updated[updated.length - 1];
-          if (last.role === 'assistant') {
-            last.content = `เกิดข้อผิดพลาด: ${err}`;
-            last.isStreaming = false;
-          }
-          return [...updated];
+          if (prev.length === 0) return prev;
+          const lastIdx = prev.length - 1;
+          return prev.map((msg, i) =>
+            i === lastIdx && msg.role === 'assistant'
+              ? {
+                  ...msg,
+                  content: `เกิดข้อผิดพลาด: ${err}`,
+                  isThinking: false,
+                  isStreaming: false,
+                }
+              : msg
+          );
         });
         setLoading(false);
       },
       (sources) => {
         setMessages((prev) => {
-          const updated = [...prev];
-          const last = updated[updated.length - 1];
-          if (last.role === 'assistant') {
-            last.webSources = sources;
-          }
-          return [...updated];
+          if (prev.length === 0) return prev;
+          const lastIdx = prev.length - 1;
+          return prev.map((msg, i) =>
+            i === lastIdx && msg.role === 'assistant'
+              ? { ...msg, webSources: sources }
+              : msg
+          );
+        });
+      },
+      true, // useRag
+      (thought) => {
+        setMessages((prev) => {
+          if (prev.length === 0) return prev;
+          const lastIdx = prev.length - 1;
+          return prev.map((msg, i) =>
+            i === lastIdx && msg.role === 'assistant'
+              ? {
+                  ...msg,
+                  isThinking: true,
+                  thinking: (msg.thinking || '') + thought,
+                }
+              : msg
+          );
         });
       }
     );
@@ -328,15 +440,29 @@ export default function SearchPage() {
                     <div className="liquid-glass size-9 shrink-0 rounded-full flex items-center justify-center shadow-md mt-0.5 text-emerald-600">
                       <Bot className="size-5" />
                     </div>
-                    <div className="flex-1 space-y-3.5 max-w-[92%]">
-                      {/* AI Text Bubble */}
+                    <div className="flex-1 space-y-3 max-w-[92%]">
+                      {/* Thinking Process Accordion (World-Class AI Reasoning UI) */}
+                      {(msg.thinking || msg.isThinking) && (
+                        <ThinkingBox
+                          thinking={msg.thinking}
+                          isThinking={msg.isThinking}
+                          isStreaming={msg.isStreaming}
+                        />
+                      )}
+
+                      {/* AI Main Answer Bubble */}
                       <div className="liquid-glass rounded-[28px] rounded-tl-md px-5 py-4 text-sm text-slate-900 leading-relaxed shadow-md">
                         {msg.content ? (
                           <MarkdownText content={msg.content} className="font-medium" />
-                        ) : msg.isStreaming ? (
+                        ) : msg.isStreaming && !msg.isThinking && !msg.thinking ? (
                           <span className="flex items-center gap-2 text-slate-500 font-medium text-xs">
                             <Loader2 className="w-4 h-4 animate-spin text-emerald-600" />
                             กำลังสืบค้นและวิเคราะห์ข้อมูล...
+                          </span>
+                        ) : msg.isStreaming && !msg.content ? (
+                          <span className="flex items-center gap-2 text-slate-500 font-medium text-xs">
+                            <Loader2 className="w-4 h-4 animate-spin text-emerald-600" />
+                            กำลังเรียบเรียงคำตอบ...
                           </span>
                         ) : null}
                         {msg.isStreaming && msg.content && (
@@ -365,8 +491,8 @@ export default function SearchPage() {
                         </CollapsibleSources>
                       )}
 
-                      {/* Live Search Results */}
-                      {!msg.isStreaming && msg.searchResults && msg.searchResults.length > 0 && (
+                      {/* Live Search Results (Shown only if no webSources provided) */}
+                      {!msg.isStreaming && (!msg.webSources || msg.webSources.length === 0) && msg.searchResults && msg.searchResults.length > 0 && (
                         <CollapsibleSources title="เว็บไซต์ทางการที่เกี่ยวข้อง" count={msg.searchResults.length}>
                           {msg.searchResults.map((res, ri) => (
                             <a

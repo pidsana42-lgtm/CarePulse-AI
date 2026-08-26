@@ -118,7 +118,8 @@ export async function streamAiAdvisor(
   onDone: () => void,
   onError: (error: string) => void,
   onWebSources?: (sources: Array<{ title: string; url: string; snippet: string }>) => void,
-  useRag: boolean = true
+  useRag: boolean = true,
+  onThinking?: (thought: string) => void
 ): Promise<void> {
   try {
     const response = await fetch(`${API_BASE_URL}/ai/chat/stream`, {
@@ -169,6 +170,9 @@ export async function streamAiAdvisor(
           }
           if (parsed.web_sources && onWebSources) {
             onWebSources(parsed.web_sources);
+          }
+          if (parsed.thinking && onThinking) {
+            onThinking(parsed.thinking);
           }
           if (parsed.delta) {
             onChunk(parsed.delta);

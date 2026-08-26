@@ -29,47 +29,82 @@ class AIMedicalCertificateReader:
 
         logger.info(f"Real OCR on {filename}: Engine={ocr_engine}, Extracted {len(raw_text)} chars")
 
-        # 2. Try Direct Qwen Vision AI Image Interpretation (VLM)
+        # 2. Detect MIME type
         mime_type = "image/jpeg"
         if filename.lower().endswith(".png"):
             mime_type = "image/png"
         elif filename.lower().endswith(".webp"):
             mime_type = "image/webp"
+        elif filename.lower().endswith(".pdf"):
+            mime_type = "application/pdf"
+
+        # 3. Optimize image size for ultra-fast network transmission (<300KB)
+        import base64 as _b64
+        from app.core.config import settings as _settings
+        import httpx as _httpx
+
+        try:
+            from PIL import Image
+            import io
+            img = Image.open(io.BytesIO(file_bytes))
+            if img.mode in ("RGBA", "P"):
+                img = img.convert("RGB")
+            if max(img.width, img.height) > 1280:
+                img.thumbnail((1280, 1280), Image.Resampling.LANCZOS)
+            buf = io.BytesIO()
+            img.save(buf, format="JPEG", quality=85, optimize=True)
+            compressed_bytes = buf.getvalue()
+            b64_img = _b64.b64encode(compressed_bytes).decode("utf-8")
+            data_url = f"data:image/jpeg;base64,{b64_img}"
+        except Exception:
+            b64_img = _b64.b64encode(file_bytes).decode("utf-8")
+            data_url = f"data:{mime_type};base64,{b64_img}"
 
         vision_analysis = None
-        try:
-            vision_analysis = await llm_service.analyze_image_with_vision(
-                image_bytes=file_bytes,
-                mime_type=mime_type,
-                prompt="กรุณาอ่านข้อความและวิเคราะห์ใบรับรองแพทย์/ประวัติการรักษานี้: ระบุ 1. ชื่อโรงพยาบาล 2. การวินิจฉัยโรคและภาวะพึ่งพิง 3. กายอุปกรณ์ที่จำเป็น (เตียง, รถเข็น, ผ้าอ้อม, ออกซิเจน) 4. คำแนะนำการขอรับสิทธิ"
-            )
-        except Exception as e:
-            logger.warning(f"Qwen Vision analysis error: {e}")
+        gemma_clinical_analysis = ""
 
-        # 3. Call Qwen LLM for Deep Clinical Reasoning & Welfare Analysis
-        qwen_clinical_analysis = ""
-        prompt_text = raw_text if raw_text else f"เอกสารทางการแพทย์: {filename} (เอกสารประเมินสิทธิการรักษาและกายอุปกรณ์)"
-        qwen_clinical_prompt = f"""กรุณาวิเคราะห์เอกสารทางการแพทย์/ใบรับรองแพทย์ ({filename}) อย่างละเอียด:
-ข้อความที่อ่านได้จากเอกสาร:
-\"\"\"{prompt_text}\"\"\"
-
-กรุณาสรุปผลการวิเคราะห์โดย Qwen AI ให้ชัดเจนและกระชับ:
-1. **สถานพยาบาลและข้อมูลเบื้องต้น**
-2. **การวินิจฉัยทางการแพทย์และภาวะพึ่งพิง** (เช่น ติดเตียง, ช่วยเหลือตัวเองไม่ได้, กลั้นขับถ่ายไม่อยู่, โรคเรื้อรัง)
-3. **กายอุปกรณ์และสวัสดิการที่เข้าข่ายเบิกได้ฟรี** (เตียงผู้ป่วยปรับระดับ พม., รถเข็น, ผ้าอ้อมผู้ใหญ่ กปท. วันละ <= 3 ชิ้น, เครื่องผลิตออกซิเจน)
-4. **ระเบียบราชการอ้างอิงและขั้นตอนการติดต่อ** (สปสช. 1330, พม. 1300, รพ.สต., อบต.)"""
+        gemma_vision_prompt = (
+            "คุณคือผู้เชี่ยวชาญด้านสิทธิการรักษาพยาบาลและสวัสดิการสังคมของไทย "
+            "กรุณาอ่านและวิเคราะห์ใบรับรองแพทย์/เอกสารทางการแพทย์ในภาพนี้ แล้วตอบใน 4 หัวข้อ:\n\n"
+            "1. **สถานพยาบาลและข้อมูลเบื้องต้น** (ชื่อโรงพยาบาล, วันที่, ชื่อแพทย์)\n"
+            "2. **การวินิจฉัยทางการแพทย์และภาวะพึ่งพิง** (ระบุโรค, ภาวะติดเตียง/ช่วยเหลือตัวเองไม่ได้/กลั้นไม่อยู่, คะแนน ADL ถ้ามี)\n"
+            "3. **กายอุปกรณ์และสวัสดิการที่เข้าข่ายเบิกได้ฟรี** (เตียงปรับระดับ พม., รถเข็น, ผ้าอ้อมผู้ใหญ่ กปท. ≤3 ชิ้น/วัน, เครื่องผลิตออกซิเจน)\n"
+            "4. **ระเบียบราชการอ้างอิงและขั้นตอนติดต่อ** (สปสช. 1330, พม. 1300, รพ.สต., อบต./เทศบาล)"
+        )
 
         try:
-            qwen_res = await llm_service.generate_chat_response(
-                messages=[{"role": "user", "content": qwen_clinical_prompt}],
-                temperature=0.3,
-                max_tokens=600,
-                use_rag=True,
-                use_web_search=False
-            )
-            qwen_clinical_analysis = qwen_res.get("content", "")
+            timeout_cfg = _httpx.Timeout(4.0, connect=1.5, read=3.0)
+            async with _httpx.AsyncClient(timeout=timeout_cfg) as _client:
+                _resp = await _client.post(
+                    f"{llm_service.get_api_endpoint()}/chat/completions",
+                    headers={
+                        "Content-Type": "application/json",
+                        "Authorization": f"Bearer {_settings.LLM_API_KEY}",
+                    },
+                    json={
+                        "model": _settings.LLM_MODEL,
+                        "messages": [{
+                            "role": "user",
+                            "content": [
+                                {"type": "image_url", "image_url": {"url": data_url}},
+                                {"type": "text", "text": gemma_vision_prompt},
+                            ],
+                        }],
+                        "temperature": 0.3,
+                        "max_tokens": 700,
+                    },
+                )
+            if _resp.status_code == 200:
+                _result = _resp.json()["choices"][0]["message"]["content"] or ""
+                gemma_clinical_analysis = _result
+                vision_analysis = _result
+                logger.info(f"Gemma-4 Vision analyzed {filename}: {len(gemma_clinical_analysis)} chars")
+            else:
+                logger.warning(f"Gemma-4 Vision HTTP {_resp.status_code}: {_resp.text[:200]}")
+                raise Exception(f"HTTP {_resp.status_code}")
         except Exception as e:
-            logger.warning(f"Qwen LLM clinical reasoning fallback: {e}")
+            logger.info(f"Gemma-4 Vision offline/cold ({e}), instant clinical reasoning from OCR text")
+            vision_analysis = f"วิเคราะห์จากข้อความเอกสาร (Real OCR Thai+Eng): {raw_text[:200]}"
 
 
         # 4. Parse Image Metadata
@@ -83,7 +118,7 @@ class AIMedicalCertificateReader:
             pass
 
         # 5. Extract Clinical Entities & Match Equipment
-        combined_corpus = f"{raw_text} {vision_analysis or ''} {qwen_clinical_analysis} {filename}".lower()
+        combined_corpus = f"{raw_text} {vision_analysis or ''} {gemma_clinical_analysis} {filename}".lower()
 
         detected_conditions = []
         detected_hospital = "ไม่ระบุชัดเจนในเอกสาร"
@@ -211,14 +246,14 @@ class AIMedicalCertificateReader:
         })
 
         # 7. Final AI Clinical Summary
-        if qwen_clinical_analysis:
-            ai_clinical_summary = qwen_clinical_analysis
+        if gemma_clinical_analysis:
+            ai_clinical_summary = gemma_clinical_analysis
         elif vision_analysis:
             ai_clinical_summary = vision_analysis
         else:
             cond_text = ", ".join(detected_conditions)
             ai_clinical_summary = (
-                f"จากการอ่านและวิเคราะห์เอกสาร ({filename}) โดย Qwen AI & OCR:\n"
+                f"จากการอ่านและวิเคราะห์เอกสาร ({filename}) โดย Gemma-4 AI & OCR:\n"
                 f"• **สถานพยาบาลที่ตรวจพบ**: {detected_hospital}\n"
                 f"• **การวินิจฉัยและสภาวะทางการแพทย์**: {cond_text}\n"
                 f"• **สิทธิประโยชน์และกายอุปกรณ์ที่สอดคล้อง**: เข้าข่ายผู้มีสิทธิขอรับกายอุปกรณ์จาก **สปสช.** และ **กระทรวง พม.**\n"
@@ -253,7 +288,7 @@ class AIMedicalCertificateReader:
             "file_size": len(file_bytes),
             "resolution": image_dims,
             "document_type": doc_type,
-            "ai_model": "Qwen 3.8 Clinical Vision & Reasoning Engine",
+            "ai_model": "Gemma-4 Multimodal Clinical Vision & Reasoning Engine",
             "ocr_engine": ocr_engine,
             "ocr_raw_text": raw_text if raw_text else "อ่านข้อมูลภาพเรียบร้อยแล้ว (ไม่พบตัวอักษรพิมพ์ชัดเจน)",
             "detected_hospital": detected_hospital,
@@ -268,7 +303,7 @@ class AIMedicalCertificateReader:
 
         masked_preview = pdpa_masker.sanitize_health_data({
             "ชื่อเอกสาร": filename,
-            "โมเดล AI ที่ใช้วิเคราะห์": "Qwen 3.8 (Clinical Vision & Reasoning)",
+            "โมเดล AI ที่ใช้วิเคราะห์": "Gemma-4 (Clinical Vision & Reasoning)",
             "สถานพยาบาลที่ตรวจพบ": detected_hospital,
             "การวินิจฉัยที่อ่านได้จากเอกสาร": ", ".join(detected_conditions),
             "ข้อความบางส่วนที่อ่านได้ (OCR)": raw_text[:150] + ("..." if len(raw_text) > 150 else "") if raw_text else "ประมวลผลข้อความภาพสำเร็จ",
@@ -285,7 +320,7 @@ class AIMedicalCertificateReader:
             "extracted_data": extracted_raw,
             "masked_preview": masked_preview,
             "ocr_confidence": ocr_confidence,
-            "message": "Qwen AI ได้ทำการอ่านและวิเคราะห์ใบรับรองแพทย์ พร้อมคำนวณสิทธิเรียบร้อยแล้ว"
+            "message": "Gemma-4 AI ได้ทำการอ่านและวิเคราะห์ใบรับรองแพทย์ พร้อมคำนวณสิทธิเรียบร้อยแล้ว"
         }
 
 

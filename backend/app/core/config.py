@@ -35,10 +35,10 @@ class Settings(BaseSettings):
     MASK_LOGS: bool = True
     ENABLE_DATA_ENCRYPTION: bool = True
 
-    # LLM & Modal vLLM Configuration (Qwen3.8-27B-FP8)
+    # LLM & Modal Configuration (Phonsiri/Gemma-4-E4B-it-PARL)
     MODAL_LLM_URL: str = ""
     LLM_BASE_URL: str = "http://localhost:8000/v1"
-    LLM_MODEL: str = "Qwen/Qwen3.8-27B-FP8"
+    LLM_MODEL: str = "Phonsiri/Gemma-4-E4B-it-PARL"
     LLM_API_KEY: str = "EMPTY"
     LLM_TIMEOUT: int = 120
 
