@@ -26,21 +26,21 @@ export function Hero() {
         </div>
 
         {/* Liquid Glass CTA Buttons */}
-        <div className="flex flex-col sm:flex-row gap-3.5 w-full max-w-md animate-apple-fade-in" style={{ animationDelay: '0.2s' }}>
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5 w-full max-w-xl animate-apple-fade-in" style={{ animationDelay: '0.2s' }}>
           <a
             href="/assessment"
-            className="liquid-btn-primary flex-1 flex items-center justify-center gap-2 py-4 px-6 text-sm sm:text-base font-extrabold"
+            className="liquid-btn-primary flex-1 w-full sm:w-auto flex items-center justify-center gap-2 py-4 px-6 sm:px-7 text-sm sm:text-base font-extrabold whitespace-nowrap shrink-0"
           >
-            <ShieldCheck className="size-5" />
-            <span>ประเมินสิทธิสุขภาพ</span>
-            <ArrowRight className="size-4 opacity-80" />
+            <ShieldCheck className="size-5 shrink-0" />
+            <span className="whitespace-nowrap">ประเมินสิทธิสุขภาพ</span>
+            <ArrowRight className="size-4 opacity-80 shrink-0" />
           </a>
           <a
             href="/scan"
-            className="liquid-btn-secondary flex-1 flex items-center justify-center gap-2 py-4 px-6 text-sm sm:text-base font-extrabold text-slate-900"
+            className="liquid-btn-secondary flex-1 w-full sm:w-auto flex items-center justify-center gap-2 py-4 px-6 sm:px-7 text-sm sm:text-base font-extrabold text-slate-900 whitespace-nowrap shrink-0"
           >
-            <Stethoscope className="size-5 text-emerald-600" />
-            <span>สแกนใบรับรองแพทย์</span>
+            <Stethoscope className="size-5 text-emerald-600 shrink-0" />
+            <span className="whitespace-nowrap">สแกนใบรับรองแพทย์</span>
           </a>
         </div>
       </div>

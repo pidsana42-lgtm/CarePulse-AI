@@ -66,7 +66,6 @@ export function WebSearchSection() {
         {/* Example Questions */}
         <div className="space-y-3">
           <p className="text-xs font-black text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
             คำถามที่คนอยากรู้:
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

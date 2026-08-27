@@ -9,7 +9,7 @@ router = APIRouter()
 
 class ChatMessage(BaseModel):
     role: str = Field(..., description="'user', 'assistant', or 'system'")
-    content: str = Field(..., description="Message text")
+    content: Any = Field(..., description="Message text or multimodal content list (images, attachments)")
 
 class ChatRequest(BaseModel):
     messages: List[ChatMessage]
