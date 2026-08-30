@@ -1,7 +1,8 @@
 import type { AssessmentResult, DocumentScanResult } from '@/types';
 import { getVerifiedDocumentBenefits } from '@/lib/document-rights';
 
-const SESSION_KEY = 'carepulse_session_memory_v1';
+const SESSION_KEY = 'carepulse_session_memory_v2';
+const LEGACY_SESSION_MEMORY_KEY = 'carepulse_session_memory_v1';
 const LEGACY_ASSESSMENT_KEY = 'latest_assessment_result';
 
 interface SessionDocumentInsight {
@@ -10,8 +11,7 @@ interface SessionDocumentInsight {
   documentType: string;
   uploadedAt: string;
   ocrConfidence: number;
-  clinicalSummary?: string;
-  reviewedText?: string;
+  extractedData: Record<string, unknown>;
   matchedEquipment: Array<{ item: string; agency: string; cost_saved?: string }>;
   eligibleSchemes: Array<{ scheme: string; agency: string; benefit?: string; contact?: string }>;
 }
@@ -24,7 +24,7 @@ export interface SessionLocation {
 }
 
 interface CarePulseSessionMemory {
-  version: 1;
+  version: 2;
   startedAt: string;
   updatedAt: string;
   assessment?: AssessmentResult;
@@ -34,15 +34,17 @@ interface CarePulseSessionMemory {
 
 function emptyMemory(): CarePulseSessionMemory {
   const now = new Date().toISOString();
-  return { version: 1, startedAt: now, updatedAt: now, documentInsights: [] };
+  return { version: 2, startedAt: now, updatedAt: now, documentInsights: [] };
 }
 
 function readMemory(): CarePulseSessionMemory {
   if (typeof window === 'undefined') return emptyMemory();
+  window.sessionStorage.removeItem(LEGACY_SESSION_MEMORY_KEY);
   const raw = window.sessionStorage.getItem(SESSION_KEY);
   if (!raw) return emptyMemory();
   try {
     const parsed = JSON.parse(raw) as CarePulseSessionMemory;
+    if (parsed.version !== 2) return emptyMemory();
     return { ...emptyMemory(), ...parsed, documentInsights: parsed.documentInsights ?? [] };
   } catch {
     window.sessionStorage.removeItem(SESSION_KEY);
@@ -94,6 +96,53 @@ export function getSessionLocation(): SessionLocation | null {
   return readMemory().location ?? null;
 }
 
+const CLEAN_EXTRACTED_KEYS = [
+  'certificate_data',
+  'detected_patient_name',
+  'detected_patient_first_name',
+  'detected_patient_last_name',
+  'detected_citizen_id',
+  'detected_age',
+  'detected_hospital',
+  'detected_conditions',
+  'is_bedridden_or_adl_limited',
+  'suggested_daily_living',
+  'has_mobility_limitation',
+  'has_incontinence',
+  'has_disability_card',
+  'suggested_needs_equipment',
+  'matched_equipment',
+  'eligible_schemes',
+  'official_references',
+] as const;
+
+function cleanExtractedData(extracted: DocumentScanResult['extracted_data']): Record<string, unknown> {
+  const clean: Record<string, unknown> = {};
+  for (const key of CLEAN_EXTRACTED_KEYS) {
+    const value = extracted[key];
+    if (value !== undefined) clean[key] = value;
+  }
+  return JSON.parse(JSON.stringify(clean)) as Record<string, unknown>;
+}
+
+function maskCitizenId(value: unknown): unknown {
+  if (typeof value !== 'string' || !/^\d{13}$/.test(value)) return value;
+  return `*********${value.slice(-4)}`;
+}
+
+function documentForAi(document: SessionDocumentInsight): SessionDocumentInsight {
+  const extractedData = { ...document.extractedData };
+  const certificateData = extractedData.certificate_data;
+  if (certificateData && typeof certificateData === 'object' && !Array.isArray(certificateData)) {
+    extractedData.certificate_data = {
+      ...(certificateData as Record<string, unknown>),
+      citizen_id: maskCitizenId((certificateData as Record<string, unknown>).citizen_id),
+    };
+  }
+  extractedData.detected_citizen_id = maskCitizenId(extractedData.detected_citizen_id);
+  return { ...document, extractedData };
+}
+
 export function rememberDocumentInsight(result: DocumentScanResult, fileName: string, assessment?: AssessmentResult | null) {
   const extracted = result.extracted_data ?? {};
   const verifiedBenefits = assessment
@@ -105,14 +154,30 @@ export function rememberDocumentInsight(result: DocumentScanResult, fileName: st
     documentType: result.document_type,
     uploadedAt: result.uploaded_at,
     ocrConfidence: result.ocr_confidence,
-    clinicalSummary: typeof extracted.ai_clinical_summary === 'string' ? extracted.ai_clinical_summary : undefined,
-    reviewedText: typeof extracted.ocr_raw_text === 'string' ? extracted.ocr_raw_text : undefined,
+    extractedData: cleanExtractedData(extracted),
     matchedEquipment: verifiedBenefits?.equipment ?? [],
     eligibleSchemes: verifiedBenefits?.schemes ?? [],
   };
   const memory = readMemory();
   const documentInsights = [...memory.documentInsights.filter((item) => item.id !== insight.id), insight].slice(-20);
   writeMemory({ ...memory, documentInsights });
+}
+
+export function getSessionDocumentResults(): Array<{ fileName: string; result: DocumentScanResult }> {
+  return readMemory().documentInsights
+    .filter((document) => Object.keys(document.extractedData ?? {}).length > 0)
+    .map((document) => ({
+      fileName: document.fileName,
+      result: {
+        document_id: document.id,
+        uploaded_at: document.uploadedAt,
+        document_type: document.documentType,
+        extracted_data: document.extractedData,
+        masked_preview: {},
+        ocr_confidence: document.ocrConfidence,
+        message: 'ใช้ข้อมูลใบรับรองแพทย์จาก cache ของเซสชันนี้',
+      },
+    }));
 }
 
 export function forgetDocumentInsight(documentId: string) {
@@ -132,6 +197,7 @@ export function hasCarePulseSession() {
 export function clearCarePulseSession() {
   if (typeof window === 'undefined') return;
   window.sessionStorage.removeItem(SESSION_KEY);
+  window.sessionStorage.removeItem(LEGACY_SESSION_MEMORY_KEY);
   window.sessionStorage.removeItem(LEGACY_ASSESSMENT_KEY);
   window.dispatchEvent(new Event('carepulse:session-updated'));
 }
@@ -150,11 +216,12 @@ export function getAiSessionContext(includeFullAssessment: boolean = false): str
     if (registry.benefits.length) lines.push(`ความคุ้มครองพื้นฐาน: ${registry.benefits.map((benefit) => benefit.name).join(', ')}`);
   }
 
-  for (const document of memory.documentInsights) {
+  const documentsForAi = memory.documentInsights.map(documentForAi);
+  for (const document of documentsForAi) {
+    const certificateData = document.extractedData?.certificate_data;
     const parts = [
       `เอกสาร ${document.fileName} (${document.documentType}, ความมั่นใจในการอ่านข้อความ ${Math.round(document.ocrConfidence * 100)}%)`,
-      document.clinicalSummary ? `สรุป: ${document.clinicalSummary}` : '',
-      document.reviewedText ? `ข้อความที่ผู้ใช้ตรวจทานแล้ว: ${document.reviewedText}` : '',
+      certificateData ? `ข้อมูลใบรับรองแบบโครงสร้าง: ${JSON.stringify(certificateData)}` : '',
       document.matchedEquipment.length ? `อุปกรณ์ที่อาจเข้าเงื่อนไข: ${document.matchedEquipment.map((item) => `${item.item} — ${item.agency}`).join(', ')}` : '',
       document.eligibleSchemes.length ? `สิทธิเสริมที่อาจเกี่ยวข้อง: ${document.eligibleSchemes.map((item) => `${item.scheme} — ${item.agency}`).join(', ')}` : '',
     ].filter(Boolean);
@@ -173,7 +240,7 @@ export function getAiSessionContext(includeFullAssessment: boolean = false): str
       'ข้อมูลผลตรวจทั้งหมดที่ดึงมาในเซสชันนี้ (ใช้ตอบคำถามนี้เท่านั้น; เลขบัตรและข้อมูลระบุตัวตนถูกปกปิดแล้ว):',
       JSON.stringify({
         assessment: memory.assessment,
-        scanned_documents: memory.documentInsights,
+        scanned_documents: documentsForAi,
       }, null, 2),
     );
   }

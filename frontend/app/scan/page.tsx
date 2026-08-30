@@ -21,7 +21,12 @@ import {
 } from 'lucide-react';
 import { SiteHeader } from '@/components/site-header';
 import { SiteFooter } from '@/components/site-footer';
-import { forgetDocumentInsight, getSessionAssessment, rememberDocumentInsight } from '@/lib/session-memory';
+import {
+  forgetDocumentInsight,
+  getSessionAssessment,
+  getSessionDocumentResults,
+  rememberDocumentInsight,
+} from '@/lib/session-memory';
 import { getVerifiedDocumentBenefits } from '@/lib/document-rights';
 
 const DOCUMENT_TYPE = 'medical_certificate';
@@ -48,6 +53,12 @@ export default function ScanPage() {
 
   useEffect(() => {
     setAssessment(getSessionAssessment());
+    const cachedDocuments = getSessionDocumentResults();
+    if (cachedDocuments.length > 0) {
+      setScanResults(cachedDocuments);
+      setConfirmedDocumentIds(cachedDocuments.map(({ result }) => result.document_id));
+      setActiveStep(3);
+    }
   }, []);
 
   const goToStep = (step: number) => {

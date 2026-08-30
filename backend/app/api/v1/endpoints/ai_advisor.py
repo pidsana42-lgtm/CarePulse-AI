@@ -14,7 +14,7 @@ class ChatMessage(BaseModel):
 class ChatRequest(BaseModel):
     messages: List[ChatMessage]
     temperature: Optional[float] = 0.6
-    max_tokens: Optional[int] = 512
+    max_tokens: Optional[int] = 8096
     use_rag: Optional[bool] = True
     use_web_search: Optional[bool] = True
 
@@ -42,7 +42,7 @@ async def chat_with_ai_advisor(request: ChatRequest):
         result = await llm_service.generate_chat_response(
             messages=messages_dict,
             temperature=request.temperature or 0.6,
-            max_tokens=request.max_tokens or 512,
+            max_tokens=request.max_tokens or 8096,
             use_rag=request.use_rag if request.use_rag is not None else True,
             use_web_search=request.use_web_search if request.use_web_search is not None else True,
         )
@@ -59,7 +59,7 @@ async def stream_chat_with_ai_advisor(request: ChatRequest):
     generator = llm_service.stream_chat_response(
         messages=messages_dict,
         temperature=request.temperature or 0.6,
-        max_tokens=request.max_tokens or 512,
+        max_tokens=request.max_tokens or 8096,
         use_rag=request.use_rag if request.use_rag is not None else True,
         use_web_search=request.use_web_search if request.use_web_search is not None else True,
     )

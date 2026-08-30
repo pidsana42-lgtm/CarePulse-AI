@@ -1,6 +1,8 @@
 import logging
 import uuid
 import re
+import asyncio
+import json
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 from app.core.pdpa_masking import pdpa_masker
@@ -24,7 +26,7 @@ class AIMedicalCertificateReader:
         corrected_text: Optional[str] = None,
     ) -> Dict[str, Any]:
         doc_id = f"MED-{uuid.uuid4().hex[:8].upper()}"
-        from app.services.llm_service import llm_service
+        from app.services.llm_service import llm_service, strip_thinking_tokens
 
         # 1. Run Real OCR on image / document bytes
         if corrected_text is not None:
@@ -32,7 +34,11 @@ class AIMedicalCertificateReader:
             ocr_engine = "user_reviewed"
             ocr_confidence = 1.0
         else:
-            ocr_result = real_ocr_service.extract_text(file_bytes, filename)
+            ocr_result = await asyncio.to_thread(
+                real_ocr_service.extract_text,
+                file_bytes,
+                filename,
+            )
             raw_text = ocr_result.get("text", "")
             ocr_engine = ocr_result.get("engine", "none")
             ocr_confidence = ocr_result.get("confidence", 0.92)
@@ -72,20 +78,42 @@ class AIMedicalCertificateReader:
 
         vision_analysis = None
         gemma_clinical_analysis = ""
+        vision_extracted: Dict[str, Any] = {}
 
         gemma_vision_prompt = (
-            "คุณคือผู้เชี่ยวชาญด้านสิทธิการรักษาพยาบาลและสวัสดิการสังคมของไทย "
-            "กรุณาอ่านและวิเคราะห์ใบรับรองแพทย์/เอกสารทางการแพทย์ในภาพนี้ แล้วตอบใน 4 หัวข้อ:\n\n"
-            "1. **สถานพยาบาลและข้อมูลเบื้องต้น** (ชื่อโรงพยาบาล, วันที่, ชื่อแพทย์)\n"
-            "2. **การวินิจฉัยทางการแพทย์และภาวะพึ่งพิง** (ระบุโรค ภาวะติดเตียง ช่วยเหลือตัวเองไม่ได้ ภาวะกลั้นไม่อยู่ และคะแนนประเมินกิจวัตรประจำวันถ้ามี)\n"
-            "3. **กายอุปกรณ์และสวัสดิการที่เข้าข่ายเบิกได้ฟรี** (เตียงปรับระดับ พม., รถเข็น, ผ้าอ้อมผู้ใหญ่ กปท. ≤3 ชิ้น/วัน, เครื่องผลิตออกซิเจน)\n"
-            "4. **ระเบียบราชการอ้างอิงและขั้นตอนติดต่อ** (สปสช. 1330, พม. 1300, รพ.สต., อบต./เทศบาล)"
+            "อ่านใบรับรองแพทย์ในภาพและดึงข้อมูลจริงเป็น JSON ตาม schema ที่กำหนด "
+            "patient_first_name และ patient_last_name ต้องเป็นชื่อบุคคลที่ใบรับรองออกให้เท่านั้น "
+            "ห้ามใช้ชื่อแพทย์ นายแพทย์ ผู้ตรวจ ผู้รับรอง ผู้ลงนาม หรือเลขใบประกอบวิชาชีพ "
+            "ชื่อหลังคำว่า ข้าพเจ้า, นายแพทย์, แพทย์หญิง หรือแพทย์ผู้ตรวจ คือชื่อแพทย์และต้องข้ามเสมอ "
+            "ให้เลือกชื่อที่อยู่หลังคำว่า ได้ตรวจร่างกายของ, ผู้ป่วย, ผู้รับการตรวจ, ผู้รับบริการ "
+            "หรือ ขอรับรองว่า เท่านั้น "
+            "citizen_id ต้องเป็นเลขบัตรของผู้ป่วยเท่านั้น "
+            "ห้ามเดาข้อมูลที่มองไม่เห็น ตอบเป็น JSON object เท่านั้นตามรูปแบบนี้:\n"
+            "{\n"
+            '  "patient_title": "คำนำหน้าชื่อผู้ป่วย",\n'
+            '  "patient_first_name": "ชื่อผู้ป่วยโดยไม่มีคำนำหน้า",\n'
+            '  "patient_last_name": "นามสกุลผู้ป่วย",\n'
+            '  "citizen_id": "เลขบัตรผู้ป่วย 13 หลัก",\n'
+            '  "hospital": "ชื่อสถานพยาบาล",\n'
+            '  "doctor_name": "ชื่อแพทย์",\n'
+            '  "doctor_license": "เลขใบประกอบวิชาชีพเวชกรรม",\n'
+            '  "examination_date": "วันที่ตรวจ",\n'
+            '  "certificate_date": "วันที่ออกใบรับรอง",\n'
+            '  "symptoms": ["อาการที่ตรวจพบ"],\n'
+            '  "diagnoses": ["การวินิจฉัยของแพทย์"],\n'
+            '  "recommendation": "ความเห็นหรือคำแนะนำของแพทย์",\n'
+            '  "leave_days": null\n'
+            "}\n"
+            "citizen_id ต้องมีเฉพาะเลขอารบิก 13 หลักโดยไม่มีขีดหรือเว้นวรรค "
+            "ถ้าเห็นเฉพาะชื่อแพทย์หรืออ่านค่าของผู้ป่วยไม่ได้ให้ใช้สตริงว่าง "
+            "ข้อมูลข้อความที่อ่านไม่ได้ให้ใช้สตริงว่าง รายการที่ไม่มีให้ใช้ [] และตัวเลขที่ไม่มีให้ใช้ null "
+            "ห้ามเพิ่ม key อื่น ข้อความ OCR ดิบ คำอธิบาย หรือ markdown"
         )
 
         try:
             if corrected_text is not None:
                 raise RuntimeError("ใช้ข้อความที่ผู้ใช้ตรวจทานแล้วแทนการวิเคราะห์ภาพซ้ำ")
-            timeout_cfg = _httpx.Timeout(4.0, connect=1.5, read=3.0)
+            timeout_cfg = _httpx.Timeout(float(_settings.LLM_TIMEOUT), connect=15.0)
             async with _httpx.AsyncClient(timeout=timeout_cfg) as _client:
                 _resp = await _client.post(
                     f"{llm_service.get_api_endpoint()}/chat/completions",
@@ -102,22 +130,70 @@ class AIMedicalCertificateReader:
                                 {"type": "text", "text": gemma_vision_prompt},
                             ],
                         }],
-                        "temperature": 0.3,
-                        "max_tokens": 700,
+                        "temperature": 0,
+                        "max_tokens": 768,
+                        "enable_thinking": False,
                     },
                 )
             if _resp.status_code == 200:
                 _result = _resp.json()["choices"][0]["message"]["content"] or ""
-                gemma_clinical_analysis = _result
-                vision_analysis = _result
-                logger.info(f"Gemma-4 Vision analyzed {filename}: {len(gemma_clinical_analysis)} chars")
+                clean_result = strip_thinking_tokens(_result).strip()
+                json_match = re.search(r"\{.*\}", clean_result, flags=re.DOTALL)
+                if json_match:
+                    try:
+                        parsed_result = json.loads(json_match.group(0))
+                        if isinstance(parsed_result, dict):
+                            allowed_keys = {
+                                "patient_title",
+                                "patient_first_name",
+                                "patient_last_name",
+                                "patient_name",
+                                "citizen_id",
+                                "hospital",
+                                "doctor_name",
+                                "doctor_license",
+                                "examination_date",
+                                "certificate_date",
+                                "symptoms",
+                                "diagnoses",
+                                "recommendation",
+                                "leave_days",
+                            }
+                            vision_extracted = {
+                                key: value
+                                for key, value in parsed_result.items()
+                                if key in allowed_keys
+                            }
+                    except json.JSONDecodeError:
+                        logger.warning("Gemma-4 Vision returned invalid JSON; using text fallback")
+
+                if not raw_text and any(
+                    vision_extracted.get(key)
+                    for key in (
+                        "patient_first_name",
+                        "patient_last_name",
+                        "patient_name",
+                        "citizen_id",
+                    )
+                ):
+                    ocr_engine = "Gemma-4 Vision Identity Extractor"
+                    ocr_confidence = 0.85
+
+                logger.info(
+                    "Gemma-4 Vision structured extraction on %s: name=%s, citizen_id=%s, diagnoses=%s",
+                    filename,
+                    bool(
+                        vision_extracted.get("patient_first_name")
+                        or vision_extracted.get("patient_name")
+                    ),
+                    bool(vision_extracted.get("citizen_id")),
+                    len(vision_extracted.get("diagnoses") or []),
+                )
             else:
                 logger.warning(f"Gemma-4 Vision HTTP {_resp.status_code}: {_resp.text[:200]}")
                 raise Exception(f"HTTP {_resp.status_code}")
         except Exception as e:
             logger.info(f"Gemma-4 Vision offline/cold ({e}), instant clinical reasoning from OCR text")
-            if corrected_text is None:
-                vision_analysis = f"วิเคราะห์จากข้อความที่ระบบอ่านได้จากเอกสารภาษาไทยและภาษาอังกฤษ: {raw_text[:200]}"
 
 
         # 4. Parse Image Metadata
@@ -133,11 +209,107 @@ class AIMedicalCertificateReader:
         # 5. Extract Clinical Entities & Match Equipment
         combined_corpus = f"{raw_text} {vision_analysis or ''} {gemma_clinical_analysis} {filename}".lower()
 
-        detected_conditions = []
-        detected_hospital = "ไม่ระบุชัดเจนในเอกสาร"
-        detected_patient_name = ""
-        detected_citizen_id = ""
-        detected_age = None
+        def clean_text(value: Any, max_length: int = 240) -> str:
+            if not isinstance(value, str):
+                return ""
+            cleaned = " ".join(value.split()).strip(" .,:：-–_/|")
+            return cleaned[:max_length]
+
+        def clean_text_list(value: Any, max_items: int = 12) -> List[str]:
+            if not isinstance(value, list):
+                return []
+            cleaned_items = [clean_text(item) for item in value]
+            return list(dict.fromkeys(item for item in cleaned_items if item))[:max_items]
+
+        structured_symptoms = clean_text_list(vision_extracted.get("symptoms"))
+        structured_diagnoses = clean_text_list(vision_extracted.get("diagnoses"))
+        detected_conditions = list(structured_diagnoses)
+        detected_hospital = clean_text(vision_extracted.get("hospital"), 160)
+        detected_patient_title = clean_text(vision_extracted.get("patient_title"), 20)
+        detected_patient_first_name = clean_text(vision_extracted.get("patient_first_name"), 80)
+        detected_patient_last_name = clean_text(vision_extracted.get("patient_last_name"), 80)
+        detected_patient_name = " ".join(
+            part
+            for part in (
+                detected_patient_title,
+                detected_patient_first_name,
+                detected_patient_last_name,
+            )
+            if part
+        )
+        if not detected_patient_name:
+            detected_patient_name = clean_text(vision_extracted.get("patient_name"), 120)
+        detected_citizen_id = re.sub(
+            r"\D",
+            "",
+            str(vision_extracted.get("citizen_id") or "").translate(
+                str.maketrans("๐๑๒๓๔๕๖๗๘๙", "0123456789")
+            ),
+        )
+        if len(detected_citizen_id) != 13:
+            detected_citizen_id = ""
+        detected_age = vision_extracted.get("age")
+        if not isinstance(detected_age, int) or not 0 <= detected_age <= 130:
+            detected_age = None
+
+        entity_text = f"{raw_text}\n{gemma_clinical_analysis}"
+
+        # A labelled patient line is more reliable than the model when the
+        # certificate also contains the physician's name and signature.
+        explicit_patient_match = re.search(
+            r"(?:ได้\s*ตรวจ\s*ร่างกาย(?:\s*ของ)?|ชื่อ\s*ผู้ป่วย|ผู้ป่วย|ผู้รับการตรวจ|ผู้รับบริการ)"
+            r"[^\S\r\n]*[.．:：-]*[^\S\r\n]*([^\n\r]{2,120})",
+            raw_text,
+            flags=re.IGNORECASE,
+        )
+        if explicit_patient_match:
+            explicit_patient_name = re.split(
+                r"\s*(?:\(|บัตรประจ[ํำ]าตัว|เลข(?:ที่|ประจ[ํำ]าตัว|บัตร)|อายุ|HN|AN)",
+                explicit_patient_match.group(1).strip(),
+                maxsplit=1,
+                flags=re.IGNORECASE,
+            )[0].strip(" .,:：-–_/")
+            if (
+                len(explicit_patient_name) >= 2
+                and not re.search(
+                    r"(?:นายแพทย์|แพทย์หญิง|แพทย์ผู้ตรวจ|นพ\.|พญ\.)",
+                    explicit_patient_name,
+                    flags=re.IGNORECASE,
+                )
+            ):
+                title_match = re.match(r"^(นาย|นางสาว|นาง|เด็กชาย|เด็กหญิง)\s*", explicit_patient_name)
+                if title_match:
+                    detected_patient_title = title_match.group(1)
+                    explicit_patient_name = explicit_patient_name[title_match.end():].strip()
+
+                normalized_explicit_name = re.sub(r"\s+", "", explicit_patient_name)
+                normalized_model_name = re.sub(
+                    r"\s+",
+                    "",
+                    f"{detected_patient_first_name}{detected_patient_last_name}",
+                )
+                model_parts_match_patient = bool(
+                    detected_patient_first_name
+                    and normalized_model_name
+                    and normalized_model_name == normalized_explicit_name
+                )
+                if not model_parts_match_patient:
+                    name_parts = explicit_patient_name.split()
+                    if len(name_parts) >= 2:
+                        detected_patient_first_name = name_parts[0]
+                        detected_patient_last_name = " ".join(name_parts[1:])
+                    else:
+                        detected_patient_first_name = explicit_patient_name
+                        detected_patient_last_name = ""
+                detected_patient_name = " ".join(
+                    part
+                    for part in (
+                        detected_patient_title,
+                        detected_patient_first_name,
+                        detected_patient_last_name,
+                    )
+                    if part
+                ) or explicit_patient_name
         
         is_bedridden = False
         needs_oxygen = False
@@ -149,33 +321,57 @@ class AIMedicalCertificateReader:
         adl_score_found = ""
 
         # Detect Hospital name
-        hosp_match = re.search(r"(โรงพยาบาล[^\n\r,]+|รพ\.[^\n\r,]+|ศูนย์บริการสาธารณสุข[^\n\r,]+|คลินิก[^\n\r,]+)", raw_text)
-        if hosp_match:
+        hosp_match = re.search(r"(โรงพยาบาล[^\n\r,]+|รพ\.[^\n\r,]+|ศูนย์บริการสาธารณสุข[^\n\r,]+|คลินิก[^\n\r,]+)", entity_text)
+        if not detected_hospital and hosp_match:
             detected_hospital = hosp_match.group(1).strip()
+        if not detected_hospital:
+            detected_hospital = "ไม่ระบุชัดเจนในเอกสาร"
 
         # Detect basic patient information for transient form prefill.
         citizen_match = re.search(
             r"(?<!\d)(\d)[-\s]?(\d{4})[-\s]?(\d{5})[-\s]?(\d{2})[-\s]?(\d)(?!\d)",
-            raw_text,
+            entity_text,
         )
-        if citizen_match:
+        if not detected_citizen_id and citizen_match:
             detected_citizen_id = "".join(citizen_match.groups())
 
         patient_name_match = re.search(
-            r"(?:ชื่อ(?:ผู้ป่วย|ผู้รับบริการ)?(?:\s*[-–]?\s*นามสกุล)?|ผู้ป่วย)\s*[:：]?\s*([^\n\r]{2,100})",
-            raw_text,
-            flags=re.IGNORECASE,
+            r"(?:^|\n)[^\S\r\n]*(?:ชื่อ(?:ผู้ป่วย|ผู้รับบริการ)?"
+            r"(?:[^\S\r\n]*[-–]?[^\S\r\n]*นามสกุล)?|ผู้ป่วย)"
+            r"(?:[^\S\r\n]*[:：][^\S\r\n]*|[^\S\r\n]+)([^\n\r]{2,100})",
+            entity_text,
+            flags=re.IGNORECASE | re.MULTILINE,
         )
-        if patient_name_match:
-            detected_patient_name = re.split(
+        if not detected_patient_name and patient_name_match:
+            candidate_name = re.split(
                 r"\s+(?:เลข(?:ประจำตัว|บัตร)|อายุ|เพศ|วัน(?:ที่|เกิด)|HN|AN)(?=\s|[:：])",
                 patient_name_match.group(1).strip(),
                 maxsplit=1,
                 flags=re.IGNORECASE,
             )[0].strip(" :-–")
+            invalid_name_phrases = (
+                "แบบฟอร์ม",
+                "กรอกชื่อ",
+                "สามารถพิมพ์",
+                "อ่านข้อความ",
+                "ตรวจแก้",
+                "เอกสาร",
+            )
+            if not any(phrase in candidate_name for phrase in invalid_name_phrases):
+                detected_patient_name = candidate_name
 
-        age_match = re.search(r"อายุ\s*[:：]?\s*([0-9]{1,3})\s*(?:ปี|yrs?|years?)?", raw_text, flags=re.IGNORECASE)
-        if age_match:
+        if detected_patient_name and not detected_patient_first_name and not detected_patient_last_name:
+            fallback_name = detected_patient_name
+            title_match = re.match(r"^(นาย|นางสาว|นาง|เด็กชาย|เด็กหญิง)\s*", fallback_name)
+            if title_match:
+                detected_patient_title = title_match.group(1)
+                fallback_name = fallback_name[title_match.end():].strip()
+            name_parts = fallback_name.split()
+            detected_patient_first_name = name_parts[0] if name_parts else ""
+            detected_patient_last_name = " ".join(name_parts[1:]) if len(name_parts) > 1 else ""
+
+        age_match = re.search(r"อายุ\s*[:：]?\s*([0-9]{1,3})\s*(?:ปี|yrs?|years?)?", entity_text, flags=re.IGNORECASE)
+        if detected_age is None and age_match:
             parsed_age = int(age_match.group(1))
             if 0 <= parsed_age <= 130:
                 detected_age = parsed_age
@@ -216,14 +412,29 @@ class AIMedicalCertificateReader:
             needs_diapers = True
             has_incontinence = True
 
-        if not detected_conditions:
-            if raw_text:
-                detected_conditions.append(f"ผลตรวจทางการแพทย์: {raw_text[:100]}...")
-            else:
-                detected_conditions.append("เอกสารทางการแพทย์ (ประเมินสิทธิสุขภาพทั่วไป)")
-
         if adl_score_found:
             detected_conditions.append(adl_score_found)
+
+        detected_conditions = list(dict.fromkeys(detected_conditions))
+
+        raw_leave_days = vision_extracted.get("leave_days")
+        leave_days = raw_leave_days if isinstance(raw_leave_days, int) and 0 <= raw_leave_days <= 365 else None
+        certificate_data = {
+            "patient_name": detected_patient_name,
+            "patient_title": detected_patient_title,
+            "patient_first_name": detected_patient_first_name,
+            "patient_last_name": detected_patient_last_name,
+            "citizen_id": detected_citizen_id,
+            "hospital": detected_hospital if detected_hospital != "ไม่ระบุชัดเจนในเอกสาร" else "",
+            "doctor_name": clean_text(vision_extracted.get("doctor_name"), 120),
+            "doctor_license": clean_text(vision_extracted.get("doctor_license"), 60),
+            "examination_date": clean_text(vision_extracted.get("examination_date"), 80),
+            "certificate_date": clean_text(vision_extracted.get("certificate_date"), 80),
+            "symptoms": structured_symptoms,
+            "diagnoses": structured_diagnoses,
+            "recommendation": clean_text(vision_extracted.get("recommendation"), 500),
+            "leave_days": leave_days,
+        }
 
         # 6. Assistive Equipment & Welfare Matching
         matched_equipment: List[Dict[str, str]] = []
@@ -335,7 +546,10 @@ class AIMedicalCertificateReader:
             "ocr_engine": ocr_engine,
             "ocr_raw_text": raw_text if raw_text else "อ่านข้อมูลภาพเรียบร้อยแล้ว (ไม่พบตัวอักษรพิมพ์ชัดเจน)",
             "reviewed_by_user": corrected_text is not None,
+            "certificate_data": certificate_data,
             "detected_patient_name": detected_patient_name,
+            "detected_patient_first_name": detected_patient_first_name,
+            "detected_patient_last_name": detected_patient_last_name,
             "detected_citizen_id": detected_citizen_id,
             "detected_age": detected_age,
             "detected_hospital": detected_hospital,

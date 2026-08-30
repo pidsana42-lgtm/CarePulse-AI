@@ -78,7 +78,12 @@ class RealOCRService:
                     pytesseract.pytesseract.tesseract_cmd = p
                     break
 
-            tess_text = pytesseract.image_to_string(processed_image, lang="tha+eng", timeout=5)
+            tess_text = pytesseract.image_to_string(
+                processed_image,
+                lang="tha+eng",
+                config="--psm 6",
+                timeout=30,
+            )
             if tess_text and len(tess_text.strip()) > 5:
                 return {
                     "text": tess_text.strip(),
@@ -91,7 +96,12 @@ class RealOCRService:
         # 4. Try Tesseract OCR (English fallback)
         try:
             import pytesseract
-            tess_eng = pytesseract.image_to_string(processed_image, lang="eng", timeout=5)
+            tess_eng = pytesseract.image_to_string(
+                processed_image,
+                lang="eng",
+                config="--psm 6",
+                timeout=30,
+            )
             if tess_eng and len(tess_eng.strip()) > 5:
                 return {
                     "text": tess_eng.strip(),

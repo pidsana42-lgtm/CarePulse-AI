@@ -12,12 +12,78 @@ import {
   Search,
   UserRound,
 } from 'lucide-react';
-import { lookupMockRegistry, reviewDocumentText, uploadDocument } from '@/lib/api';
+import { lookupMockRegistry, reviewDocumentText, submitAssessment, uploadDocument } from '@/lib/api';
 import { assessMockEligibility } from '@/lib/mock-eligibility';
-import { AssessmentInput, DocumentScanResult } from '@/types';
+import { AssessmentInput, AssessmentResult, DocumentScanResult } from '@/types';
 import { SiteHeader } from '@/components/site-header';
 import { SiteFooter } from '@/components/site-footer';
-import { getSessionLocation, setSessionAssessment, setSessionLocation } from '@/lib/session-memory';
+import {
+  getSessionDocumentResults,
+  getSessionAssessment,
+  getSessionLocation,
+  rememberDocumentInsight,
+  setSessionAssessment,
+  setSessionLocation,
+} from '@/lib/session-memory';
+
+function documentNameParts(extracted: DocumentScanResult['extracted_data']) {
+  const certificate = extracted.certificate_data && typeof extracted.certificate_data === 'object'
+    ? extracted.certificate_data as Record<string, unknown>
+    : {};
+  let firstName = String(
+    extracted.detected_patient_first_name
+    ?? certificate.patient_first_name
+    ?? '',
+  ).trim();
+  let lastName = String(
+    extracted.detected_patient_last_name
+    ?? certificate.patient_last_name
+    ?? '',
+  ).trim();
+
+  if (!firstName && !lastName) {
+    const fullName = String(extracted.detected_patient_name ?? certificate.patient_name ?? '')
+      .replace(/^(นาย|นางสาว|นาง|เด็กชาย|เด็กหญิง)\s*/, '')
+      .trim();
+    const parts = fullName.split(/\s+/).filter(Boolean);
+    firstName = parts[0] ?? '';
+    lastName = parts.slice(1).join(' ');
+  }
+
+  return { firstName, lastName };
+}
+
+function mergeDocumentData(
+  current: AssessmentInput,
+  extracted: DocumentScanResult['extracted_data'],
+): AssessmentInput {
+  const { firstName, lastName } = documentNameParts(extracted);
+  const certificate = extracted.certificate_data && typeof extracted.certificate_data === 'object'
+    ? extracted.certificate_data as Record<string, unknown>
+    : {};
+  const citizenId = String(extracted.detected_citizen_id ?? certificate.citizen_id ?? '').replace(/\D/g, '');
+  const diagnoses = Array.isArray(certificate.diagnoses)
+    ? certificate.diagnoses.map(String).map((item) => item.trim()).filter(Boolean)
+    : Array.isArray(extracted.detected_conditions)
+      ? extracted.detected_conditions.map(String).map((item) => item.trim()).filter(Boolean)
+      : [];
+  const detectedAge = Number(extracted.detected_age);
+
+  return {
+    ...current,
+    full_name: [firstName, lastName].filter(Boolean).join(' ') || current.full_name,
+    citizen_id: citizenId.length === 13 ? citizenId : current.citizen_id,
+    age: Number.isInteger(detectedAge) && detectedAge > 0 ? detectedAge : current.age,
+    chronic_conditions: diagnoses.length ? diagnoses : current.chronic_conditions,
+    daily_living: extracted.suggested_daily_living ?? current.daily_living,
+    has_mobility_limitation: Boolean(extracted.has_mobility_limitation ?? current.has_mobility_limitation),
+    has_incontinence: Boolean(extracted.has_incontinence ?? current.has_incontinence),
+    has_disability_card: Boolean(extracted.has_disability_card ?? current.has_disability_card),
+    needs_equipment: Array.isArray(extracted.suggested_needs_equipment)
+      ? extracted.suggested_needs_equipment.map(String)
+      : current.needs_equipment,
+  };
+}
 
 type LocationStatus = 'idle' | 'loading' | 'success' | 'denied' | 'error';
 
@@ -55,6 +121,8 @@ const loadingStages = [
 export default function AssessmentPage() {
   const router = useRouter();
   const [formData, setFormData] = useState<AssessmentInput>(emptyForm);
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingStage, setLoadingStage] = useState(0);
   const [error, setError] = useState('');
@@ -64,6 +132,9 @@ export default function AssessmentPage() {
   const [documentError, setDocumentError] = useState('');
   const [documentReviewText, setDocumentReviewText] = useState('');
   const [documentReviewing, setDocumentReviewing] = useState(false);
+  const [documentAssessment, setDocumentAssessment] = useState<AssessmentResult | null>(null);
+  const [documentAssessmentLoading, setDocumentAssessmentLoading] = useState(false);
+  const [documentAssessmentError, setDocumentAssessmentError] = useState('');
 
   useEffect(() => {
     if (!loading) {
@@ -78,6 +149,17 @@ export default function AssessmentPage() {
 
   useEffect(() => {
     if (getSessionLocation()) setLocationStatus('success');
+    const cachedAssessment = getSessionAssessment();
+    if (cachedAssessment) setDocumentAssessment(cachedAssessment);
+    const cachedDocument = getSessionDocumentResults().at(-1);
+    if (cachedDocument) {
+      const extracted = cachedDocument.result.extracted_data ?? {};
+      const names = documentNameParts(extracted);
+      setMedicalDocument(cachedDocument);
+      setFirstName(names.firstName);
+      setLastName(names.lastName);
+      setFormData((current) => mergeDocumentData(current, extracted));
+    }
   }, []);
 
   const requestLocation = () => {
@@ -103,10 +185,45 @@ export default function AssessmentPage() {
     );
   };
 
+  const runDocumentAssessment = async (
+    document: { fileName: string; result: DocumentScanResult },
+    input: AssessmentInput,
+  ) => {
+    if (!input.consent_to_assess || documentAssessmentLoading) return;
+    setDocumentAssessmentLoading(true);
+    setDocumentAssessmentError('');
+    try {
+      const [registryResponse, engineAssessment] = await Promise.all([
+        lookupMockRegistry(input),
+        submitAssessment(input),
+      ]);
+      const rulesAssessment = assessMockEligibility(input, registryResponse);
+      const assessment: AssessmentResult = {
+        ...rulesAssessment,
+        cost_planning: engineAssessment.cost_planning,
+      };
+      setDocumentAssessment(assessment);
+      setSessionAssessment(assessment);
+      rememberDocumentInsight(document.result, document.fileName, assessment);
+    } catch (assessmentError) {
+      setDocumentAssessmentError(
+        assessmentError instanceof Error
+          ? assessmentError.message
+          : 'ไม่สามารถประเมินสิทธิจากเอกสารได้',
+      );
+    } finally {
+      setDocumentAssessmentLoading(false);
+    }
+  };
+
   const handleConsentChange = (consented: boolean) => {
-    setFormData((current) => ({ ...current, consent_to_assess: consented }));
+    const nextForm = { ...formData, consent_to_assess: consented };
+    setFormData(nextForm);
     if (consented && locationStatus !== 'success' && locationStatus !== 'loading') {
       requestLocation();
+    }
+    if (consented && medicalDocument) {
+      void runDocumentAssessment(medicalDocument, nextForm);
     }
   };
 
@@ -117,6 +234,8 @@ export default function AssessmentPage() {
       full_name: 'สมชาย ตัวอย่าง',
       consent_to_assess: true,
     });
+    setFirstName('สมชาย');
+    setLastName('ตัวอย่าง');
     setMedicalDocument(null);
     setDocumentReviewText('');
     setDocumentError('');
@@ -130,17 +249,12 @@ export default function AssessmentPage() {
       full_name: 'อรุณี ข้าราชการตัวอย่าง',
       consent_to_assess: true,
     });
+    setFirstName('อรุณี');
+    setLastName('ข้าราชการตัวอย่าง');
     setMedicalDocument(null);
     setDocumentReviewText('');
     setDocumentError('');
     setError('');
-  };
-
-  const applyDocumentDataToForm = (extracted: DocumentScanResult['extracted_data']) => {
-    setFormData((current) => ({
-      ...current,
-      full_name: String(extracted.detected_patient_name ?? '').trim() || current.full_name,
-    }));
   };
 
   const handleMedicalDocument = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -158,10 +272,18 @@ export default function AssessmentPage() {
     try {
       const result = await uploadDocument(file, 'medical_certificate');
       const extracted = result.extracted_data ?? {};
-      applyDocumentDataToForm(extracted);
-      setMedicalDocument({ fileName: file.name, result });
-      const rawText = String(extracted.ocr_raw_text ?? '');
-      setDocumentReviewText(rawText.includes('ไม่พบตัวอักษรพิมพ์ชัดเจน') ? '' : rawText);
+      const names = documentNameParts(extracted);
+      const nextForm = mergeDocumentData(formData, extracted);
+      const document = { fileName: file.name, result };
+      setFirstName(names.firstName);
+      setLastName(names.lastName);
+      setFormData(nextForm);
+      setMedicalDocument(document);
+      rememberDocumentInsight(result, file.name);
+      setDocumentReviewText('');
+      if (nextForm.consent_to_assess) {
+        await runDocumentAssessment(document, nextForm);
+      }
     } catch (scanError) {
       setDocumentError(scanError instanceof Error ? scanError.message : 'ไม่สามารถอ่านใบรับรองแพทย์ได้');
     } finally {
@@ -183,9 +305,19 @@ export default function AssessmentPage() {
         medicalDocument.result.document_type,
         documentReviewText.trim(),
       );
-      applyDocumentDataToForm(reviewedResult.extracted_data ?? {});
-      setMedicalDocument({ fileName: medicalDocument.fileName, result: reviewedResult });
-      setDocumentReviewText(String(reviewedResult.extracted_data?.ocr_raw_text ?? documentReviewText));
+      const extracted = reviewedResult.extracted_data ?? {};
+      const names = documentNameParts(extracted);
+      const nextForm = mergeDocumentData(formData, extracted);
+      const document = { fileName: medicalDocument.fileName, result: reviewedResult };
+      setFirstName(names.firstName);
+      setLastName(names.lastName);
+      setFormData(nextForm);
+      setMedicalDocument(document);
+      rememberDocumentInsight(reviewedResult, medicalDocument.fileName);
+      setDocumentReviewText('');
+      if (nextForm.consent_to_assess) {
+        await runDocumentAssessment(document, nextForm);
+      }
     } catch (reviewError) {
       setDocumentError(reviewError instanceof Error ? reviewError.message : 'ไม่สามารถนำข้อความที่แก้ไขมาเติมแบบฟอร์มได้');
     } finally {
@@ -200,12 +332,19 @@ export default function AssessmentPage() {
     setError('');
     setLoading(true);
     try {
-      const [registryResponse] = await Promise.all([
+      const [registryResponse, engineAssessment] = await Promise.all([
         lookupMockRegistry(formData),
+        submitAssessment(formData),
         new Promise((resolve) => window.setTimeout(resolve, 1800)),
       ]);
-      const result = assessMockEligibility(formData, registryResponse);
+      const result: AssessmentResult = {
+        ...assessMockEligibility(formData, registryResponse),
+        cost_planning: engineAssessment.cost_planning,
+      };
       setSessionAssessment(result);
+      if (medicalDocument) {
+        rememberDocumentInsight(medicalDocument.result, medicalDocument.fileName, result);
+      }
       router.push('/results');
     } catch (lookupError) {
       setError(lookupError instanceof Error ? lookupError.message : 'ไม่สามารถเชื่อมระบบตรวจสิทธิได้');
@@ -233,7 +372,7 @@ export default function AssessmentPage() {
 
             <p className="mt-5 text-[11px] font-black uppercase tracking-[0.2em] text-cyan-700">กำลังประมวลผล</p>
             <h2 className="mt-2 text-xl font-black text-slate-950">{loadingStages[loadingStage]}</h2>
-            <p className="mx-auto mt-2 max-w-sm text-xs leading-relaxed text-slate-500">เก็บบริบทที่จำเป็นไว้ชั่วคราวเฉพาะเซสชันนี้ และไม่บันทึกเลขบัตรประชาชนฉบับเต็ม</p>
+            <p className="mx-auto mt-2 max-w-sm text-xs leading-relaxed text-slate-500">เก็บข้อมูลแบบ JSON ไว้ชั่วคราวเฉพาะเซสชันของแท็บนี้ และปกปิดเลขบัตรเมื่อส่งบริบทให้ AI</p>
 
             <div className="mt-6 h-2 overflow-hidden rounded-full border border-white bg-slate-200/55 p-0.5 shadow-inner">
               <div className="h-full rounded-full bg-gradient-to-r from-cyan-700 via-[#1a7bf0] to-[#00f2f6] shadow-[0_0_18px_rgba(0,242,246,0.7)] transition-all duration-500" style={{ width: `${((loadingStage + 1) / loadingStages.length) * 100}%` }} />
@@ -299,7 +438,7 @@ export default function AssessmentPage() {
                   {documentLoading ? 'AI กำลังอ่านเอกสาร...' : medicalDocument ? 'เปลี่ยนใบรับรองแพทย์' : 'แนบใบรับรองแพทย์'}
                 </label>
 
-                {medicalDocument && (
+                {/* {medicalDocument && (
                   <div className="mt-3 rounded-xl bg-emerald-50 p-3 text-xs text-emerald-950">
                     <strong className="flex items-center gap-1.5"><FileCheck2 className="size-4" /> เติมข้อมูลจาก {medicalDocument.fileName} แล้ว</strong>
                     <span className="mt-1 block leading-relaxed">ความมั่นใจในการอ่านข้อความ {Math.round(medicalDocument.result.ocr_confidence * 100)}% กรุณาตรวจชื่อ–นามสกุลด้านล่างอีกครั้ง</span>
@@ -323,24 +462,55 @@ export default function AssessmentPage() {
                       {documentReviewing ? 'กำลังอ่านชื่อใหม่...' : 'นำข้อความนี้มาเติมชื่อใหม่'}
                     </button>
                   </div>
-                )}
+                )} */}
                 {documentError && <p role="alert" className="mt-3 text-xs font-semibold text-rose-700">{documentError}</p>}
                 <p className="mt-3 text-[11px] leading-relaxed text-amber-700">ระบบสาธิตควรใช้เอกสารตัวอย่างเท่านั้น ข้อมูลจาก AI อาจมีข้อผิดพลาด โปรดตรวจสอบซ้ำ</p>
               </div>
 
-              <label className="block space-y-2">
-                <span className="text-sm font-semibold text-[#1d1d1f]">ชื่อ–นามสกุล</span>
-                <input
-                  type="text"
-                  required
-                  maxLength={120}
-                  autoComplete="name"
-                  placeholder="กรอกชื่อและนามสกุล"
-                  value={formData.full_name ?? ''}
-                  onChange={(event) => setFormData({ ...formData, full_name: event.target.value })}
-                  className="h-13 w-full rounded-xl border border-black/[0.12] bg-white px-4 text-base font-medium text-[#1d1d1f] outline-none transition focus:border-[#115af2] focus:ring-4 focus:ring-[#115af2]/10"
-                />
-              </label>
+              {medicalDocument && (
+                <p className="flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-semibold text-emerald-900">
+                  <FileCheck2 className="size-4 shrink-0" />
+                  AI อ่านใบรับรอง {medicalDocument.fileName} แล้ว (มั่นใจ {Math.round(medicalDocument.result.ocr_confidence * 100)}%) — ผลสิทธิและอุปกรณ์จะแสดงหลังกดค้นหาสิทธิ
+                </p>
+              )}
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="block space-y-2">
+                  <span className="text-sm font-semibold text-[#1d1d1f]">ชื่อ</span>
+                  <input
+                    type="text"
+                    required
+                    maxLength={60}
+                    autoComplete="given-name"
+                    placeholder="กรอกชื่อ"
+                    value={firstName}
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      setFirstName(value);
+                      setFormData({ ...formData, full_name: [value, lastName].filter(Boolean).join(' ') });
+                    }}
+                    className="h-13 w-full rounded-xl border border-black/[0.12] bg-white px-4 text-base font-medium text-[#1d1d1f] outline-none transition focus:border-[#115af2] focus:ring-4 focus:ring-[#115af2]/10"
+                  />
+                </label>
+
+                <label className="block space-y-2">
+                  <span className="text-sm font-semibold text-[#1d1d1f]">นามสกุล</span>
+                  <input
+                    type="text"
+                    required
+                    maxLength={60}
+                    autoComplete="family-name"
+                    placeholder="กรอกนามสกุล"
+                    value={lastName}
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      setLastName(value);
+                      setFormData({ ...formData, full_name: [firstName, value].filter(Boolean).join(' ') });
+                    }}
+                    className="h-13 w-full rounded-xl border border-black/[0.12] bg-white px-4 text-base font-medium text-[#1d1d1f] outline-none transition focus:border-[#115af2] focus:ring-4 focus:ring-[#115af2]/10"
+                  />
+                </label>
+              </div>
 
               <label className="block space-y-2">
                 <span className="text-sm font-semibold text-[#1d1d1f]">เลขบัตรประชาชน 13 หลัก</span>

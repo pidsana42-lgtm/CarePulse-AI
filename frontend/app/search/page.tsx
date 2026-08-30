@@ -309,17 +309,24 @@ export default function SearchPage() {
         setMessages((prev) => {
           if (prev.length === 0) return prev;
           const lastIdx = prev.length - 1;
-          return prev.map((msg, i) =>
-            i === lastIdx && msg.role === 'assistant'
-              ? {
-                  ...msg,
-                  isThinking: false,
-                  isStreaming: false,
-                  searchResults,
-                  assessmentForm: ASSESSMENT_INTENT.test(query) ? true : msg.assessmentForm,
-                }
-              : msg
-          );
+          return prev.map((msg, i) => {
+            if (i !== lastIdx || msg.role !== 'assistant') return msg;
+            let finalContent = msg.content || '';
+            if (!finalContent.trim() && msg.thinking) {
+              const thaiIdx = msg.thinking.search(/[\u0E01-\u0E5B]/);
+              if (thaiIdx !== -1) {
+                finalContent = msg.thinking.slice(thaiIdx).trim();
+              }
+            }
+            return {
+              ...msg,
+              content: finalContent,
+              isThinking: false,
+              isStreaming: false,
+              searchResults,
+              assessmentForm: ASSESSMENT_INTENT.test(query) ? true : msg.assessmentForm,
+            };
+          });
         });
         setLoading(false);
       },

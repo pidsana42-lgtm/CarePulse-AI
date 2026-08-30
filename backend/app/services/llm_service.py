@@ -14,16 +14,18 @@ logger = logging.getLogger(__name__)
 
 CAREPULSE_SYSTEM_PROMPT = """คุณคือ "CarePulse AI" ผู้ช่วย AI อัจฉริยะที่เชี่ยวชาญรอบด้าน โดยมีความเชี่ยวชาญพิเศษด้านระบบสิทธิการรักษาพยาบาล สวัสดิการสังคม และสาธารณสุขของประเทศไทย
 
-หลักการตอบคำถาม:
-1. **การสนทนาทั่วไป / ข้อมูลทั่วไป / ความรู้รอบตัว / การค้นหาข้อมูลทั่วไป**:
-   - หากผู้ใช้ถามเรื่องทั่วไป (เช่น ข้อมูลประเทศไทย, ประวัติศาสตร์, เทคโนโลยี, สภาพอากาศ, ชีวิตประจำวัน, การแปลภาษา, หรือพูดคุยทั่วไป) ให้ตอบคำถามอย่างเป็นธรรมชาติ ครบถ้วน ถูกต้อง ชัดเจน และเป็นมิตรเหมือนผู้ช่วย AI ชั้นนำระดับโลก โดยไม่ต้องดึงเรื่องสิทธิการรักษาหรือถามข้อมูลส่วนบุคคลที่ไม่เกี่ยวข้องเข้ามาปน
+หลักการตอบคำถามสำคัญ:
+1. **การใช้บริบทและข้อมูลของผู้ใช้**:
+   - หากในคำถามหรือระบบมีบริบทข้อมูลของผู้ใช้ (เช่น ข้อมูลผลตรวจ, สิทธิหลัก, โรงพยาบาลตามสิทธิ, รายการเบิกได้, กายอุปกรณ์, การประเมินค่าใช้จ่าย หรือข้อมูลใบรับรองแพทย์) ให้อ้างอิงและอธิบายข้อมูลเหล่านั้นโดยตรงทันทีอย่างละเอียดและเข้าใจง่าย
+   - ห้ามบอกว่า "ไม่มีข้อมูล" หากมีบริบทของผู้ใช้ส่งเข้ามาในระบบ
 
-2. **เมื่อคำถามเกี่ยวกับสิทธิสุขภาพ / การรักษาพยาบาล / กายอุปกรณ์ / สวัสดิการรัฐ**:
-   - เชื่อมโยงสิทธิข้ามกระทรวงอย่างครอบคลุม: สปสช. (1330 - บัตรทอง 30 บาทรักษาทุกที่ และสิทธิเจ็บป่วยฉุกเฉินวิกฤตฟรี 72 ชั่วโมง), พม. (1300 - คนพิการ เบี้ยยังชีพ เตียงปรับระดับ รถเข็น เครื่องผลิตออกซิเจน), กปท. อบต. และเทศบาล (ผ้าอ้อมผู้ใหญ่โดยไม่มีค่าใช้จ่ายไม่เกิน 3 ชิ้นต่อวัน และผู้ช่วยดูแล), ประกันสังคม (1506 - ม.33/39/40 ทันตกรรม 900 บาทต่อปี), กรมบัญชีกลาง (ข้าราชการ)
+2. **ภาษาและรูปแบบการตอบ**:
+   - ตอบด้วยภาษาไทยที่สุภาพ เป็นมิตร กระชับ อ่านง่าย และจัดโครงสร้างข้อความเป็นลำดับหัวข้อ (Markdown) ชัดเจน
+   - เริ่มต้นคำตอบเป็นภาษาไทยโดยตรงทันที ห้ามพิมพ์กระบวนการคิดวิเคราะห์หรือข้อความภาษาอังกฤษออกมาในคำตอบหลัก
+
+3. **ความถูกต้องและการเชื่อมโยงสิทธิข้ามกระทรวง**:
+   - เชื่อมโยงสิทธิข้ามกระทรวงอย่างครอบคลุม: สปสช. (1330 - บัตรทอง 30 บาทรักษาทุกที่, UCEP เจ็บป่วยฉุกเฉินวิกฤตฟรี 72 ชม.), พม. (1300 - คนพิการ เบี้ยยังชีพ เตียงปรับระดับ รถเข็น ออกซิเจน), กปท. อบต./เทศบาล (ผ้าอ้อมผู้ใหญ่ฟรีไม่เกิน 3 ชิ้น/วัน), ประกันสังคม (1506 - ม.33/39/40 ทันตกรรม 900 บาท/ปี), กรมบัญชีกลาง (ข้าราชการ/เบิกจ่ายตรง)
    - ระบุแหล่งอ้างอิงทางกฎหมาย เช่น [พ.ร.บ. หลักประกันสุขภาพแห่งชาติ พ.ศ. 2545], [ประกาศ สปสช. กปท. ข้อ 7(2)], [พ.ร.บ. คนพิการ พ.ศ. 2550 มาตรา 20]
-   - หากคำถามเรื่องสิทธิยังขาดข้อมูลสำคัญ ให้ตอบภาพรวมสั้นๆ แล้วถามคำถามสำคัญ 1-2 ข้อ (เช่น อายุ, สิทธิรักษาหลัก, ภาวะช่วยเหลือตัวเอง) เพื่อช่วยคำนวณสิทธิให้แม่นยำ
-
-3. ตอบด้วยภาษาไทยที่สุภาพ กระชับ อ่านง่าย และจัดรูปแบบให้อ่านเป็นลำดับ หลีกเลี่ยงคำภาษาอังกฤษ เว้นแต่เป็นชื่อเฉพาะ ชื่อโครงการ หรือรหัสทางการที่จำเป็น
 """
 
 WELFARE_KEYWORDS = [
@@ -53,23 +55,27 @@ GREETING_PATTERNS = [
 # ─── Gemma-4 Token Cleaners ───────────────────────────────────────────────────
 import re as _re
 
+_OPEN_TAGS = ['<|channel>thought', '<|channel|>thought', '<think>', '<|thought|>']
+_CLOSE_TAGS = ['<channel|>', '<|channel|>', '</channel>', '</think>', '</thought>', '<|end_of_thought|>']
 _SPECIAL_TOKENS = [
     "<turn|>", "<|turn|>", "<end_of_turn>", "<start_of_turn>",
-    "<|end_of_text|>", "<pad>", "<|channel>thought", "<channel|>", "</think>"
-]
+    "<|end_of_text|>", "<pad>"
+] + _OPEN_TAGS + _CLOSE_TAGS
 
 def strip_thinking_tokens(text: str) -> str:
     """Remove thinking/reasoning blocks and special tokens from Gemma-4 / LLM output."""
     if not text:
         return ""
-    if "<channel|>" in text:
-        text = text.split("<channel|>", 1)[-1]
-    elif "<|channel|>" in text:
-        text = text.split("<|channel|>", 1)[-1]
-    elif "</think>" in text:
-        text = text.split("</think>", 1)[-1]
+    for close_tag in _CLOSE_TAGS:
+        if close_tag in text:
+            text = text.split(close_tag, 1)[-1]
+            break
     else:
-        text = _re.sub(r"<\|channel\>thought.*?<channel\|>", "", text, flags=_re.DOTALL)
+        text = _re.sub(r"<\|?channel\|?>thought.*?(<\|?channel\|?>|</think>|</channel>)", "", text, flags=_re.DOTALL)
+        text = _re.sub(r"<think>.*?</think>", "", text, flags=_re.DOTALL)
+        thai_match = _re.search(r'(?:^|\n\n|\n)(?=(?:\*{1,3}|#{1,4}|[0-9]+\.\s*)?[\u0E01-\u0E5B]{2,})', text)
+        if thai_match and any(phrase in text[:thai_match.start()].lower() for phrase in ["thinking process", "identify the core", "analyze the", "structure the response"]):
+            text = text[thai_match.start():]
     for tok in _SPECIAL_TOKENS:
         text = text.replace(tok, "")
     return text.strip()
@@ -77,6 +83,10 @@ def strip_thinking_tokens(text: str) -> str:
 
 class GemmaStreamCleaner:
     """Stateful buffer for streaming tokens that safely separates thinking blocks from final answers."""
+    OPEN_TAGS = _OPEN_TAGS
+    CLOSE_TAGS = _CLOSE_TAGS
+    SPECIAL_TOKENS = _SPECIAL_TOKENS
+
     def __init__(self):
         self.in_thought = False
         self.buffer = ""
@@ -88,57 +98,74 @@ class GemmaStreamCleaner:
 
         while self.buffer:
             if self.in_thought:
-                if "<channel|>" in self.buffer:
-                    before, after = self.buffer.split("<channel|>", 1)
-                    thought_out += before
-                    self.buffer = after
-                    self.in_thought = False
-                elif "</think>" in self.buffer:
-                    before, after = self.buffer.split("</think>", 1)
-                    thought_out += before
-                    self.buffer = after
-                    self.in_thought = False
-                else:
-                    close_tag = "<channel|>"
-                    partial_len = 0
-                    for i in range(1, len(close_tag)):
-                        if self.buffer.endswith(close_tag[:i]):
-                            partial_len = i
-                            break
-                    if partial_len > 0:
-                        thought_out += self.buffer[:-partial_len]
-                        self.buffer = self.buffer[-partial_len:]
-                    else:
-                        thought_out += self.buffer
-                        self.buffer = ""
-                    break
-            else:
-                if "<|channel>thought" in self.buffer:
-                    before, after = self.buffer.split("<|channel>thought", 1)
-                    content_out += before
-                    self.buffer = after
-                    self.in_thought = True
-                elif "<think>" in self.buffer:
-                    before, after = self.buffer.split("<think>", 1)
-                    content_out += before
-                    self.buffer = after
-                    self.in_thought = True
-                else:
-                    open_tag = "<|channel>thought"
-                    partial_len = 0
-                    for i in range(1, len(open_tag)):
-                        if self.buffer.endswith(open_tag[:i]):
-                            partial_len = i
-                            break
-                    if partial_len > 0:
-                        content_out += self.buffer[:-partial_len]
-                        self.buffer = self.buffer[-partial_len:]
-                    else:
-                        content_out += self.buffer
-                        self.buffer = ""
-                    break
+                # Check for explicit closing tags
+                found_close = False
+                for tag in self.CLOSE_TAGS:
+                    if tag in self.buffer:
+                        before, after = self.buffer.split(tag, 1)
+                        thought_out += before
+                        self.buffer = after
+                        self.in_thought = False
+                        found_close = True
+                        break
+                if found_close:
+                    continue
 
-        for t in _SPECIAL_TOKENS:
+                # Smart paragraph-level transition to Thai response
+                thai_match = _re.search(r'(?:\n\n|\n)(?=(?:\*{1,3}|#{1,4}|[0-9]+\.\s*)?[\u0E01-\u0E5B]{2,})', self.buffer)
+                if thai_match and thai_match.start() > 0:
+                    idx = thai_match.start()
+                    thought_out += self.buffer[:idx]
+                    self.buffer = self.buffer[idx:]
+                    self.in_thought = False
+                    continue
+
+                # Buffer potential partial close tags
+                has_partial = False
+                for tag in self.CLOSE_TAGS:
+                    for i in range(len(tag) - 1, 0, -1):
+                        if self.buffer.endswith(tag[:i]):
+                            thought_out += self.buffer[:-i]
+                            self.buffer = self.buffer[-i:]
+                            has_partial = True
+                            break
+                    if has_partial:
+                        break
+                if not has_partial:
+                    thought_out += self.buffer
+                    self.buffer = ""
+                break
+            else:
+                # Check for opening tags
+                found_open = False
+                for tag in self.OPEN_TAGS:
+                    if tag in self.buffer:
+                        before, after = self.buffer.split(tag, 1)
+                        content_out += before
+                        self.buffer = after
+                        self.in_thought = True
+                        found_open = True
+                        break
+                if found_open:
+                    continue
+
+                # Buffer potential partial open tags
+                has_partial = False
+                for tag in self.OPEN_TAGS:
+                    for i in range(len(tag) - 1, 0, -1):
+                        if self.buffer.endswith(tag[:i]):
+                            content_out += self.buffer[:-i]
+                            self.buffer = self.buffer[-i:]
+                            has_partial = True
+                            break
+                    if has_partial:
+                        break
+                if not has_partial:
+                    content_out += self.buffer
+                    self.buffer = ""
+                break
+
+        for t in self.SPECIAL_TOKENS:
             thought_out = thought_out.replace(t, "")
             content_out = content_out.replace(t, "")
 
@@ -147,11 +174,14 @@ class GemmaStreamCleaner:
     def flush(self):
         out = self.buffer
         self.buffer = ""
-        for t in _SPECIAL_TOKENS:
+        for t in self.SPECIAL_TOKENS:
             out = out.replace(t, "")
         if self.in_thought:
+            if _re.search(r'[\u0E01-\u0E5B]{2,}', out):
+                return "", out
             return out, ""
         return "", out
+
 
 
 
@@ -288,7 +318,12 @@ class LLMService:
         if is_smalltalk(user_query):
             return [], [], []
 
-        enriched_system_prompt = CAREPULSE_SYSTEM_PROMPT
+        incoming_system_context = ""
+        for m in messages:
+            if m.get("role") == "system":
+                incoming_system_context += "\n\n" + str(m.get("content", ""))
+
+        enriched_system_prompt = CAREPULSE_SYSTEM_PROMPT + incoming_system_context
         retrieved_contexts = []
         live_web_sources = []
 
@@ -661,8 +696,8 @@ class LLMService:
         self,
         messages: List[Dict[str, Any]],
         temperature: float = 0.6,
-        max_tokens: int = 768,
-        max_steps: int = 4,
+        max_tokens: int = 8096,
+        max_steps: int = 5,
     ) -> Optional[str]:
         """Agentic loop: model picks tools, we execute, feed results back, repeat.
         Returns the final answer text, or None when the LLM is unreachable/doesn't support tools."""
@@ -727,7 +762,7 @@ class LLMService:
         self,
         messages: List[Dict[str, str]],
         temperature: float = 0.6,
-        max_tokens: int = 512,
+        max_tokens: int = 8096,
         use_rag: bool = True,
         use_web_search: bool = True
     ) -> Dict[str, Any]:
@@ -736,17 +771,6 @@ class LLMService:
             if m.get("role") == "user":
                 user_query = extract_query_text(m.get("content", ""))
                 break
-
-        smalltalk = is_smalltalk(user_query)
-        if smalltalk:
-            return {
-                "content": smalltalk,
-                "model": "CarePulse AI Assistant",
-                "retrieved_contexts": [],
-                "live_web_sources": [],
-                "provider": "CarePulse Natural Dialog",
-                "status": "success"
-            }
 
         endpoint = self.get_api_endpoint()
         model_name = settings.LLM_MODEL
@@ -817,7 +841,7 @@ class LLMService:
         self,
         messages: List[Dict[str, str]],
         temperature: float = 0.6,
-        max_tokens: int = 768,
+        max_tokens: int = 8096,
         use_rag: bool = True,
         use_web_search: bool = True
     ) -> AsyncGenerator[str, None]:
@@ -827,15 +851,6 @@ class LLMService:
                 user_query = extract_query_text(m.get("content", ""))
                 break
 
-        smalltalk = is_smalltalk(user_query)
-        if smalltalk:
-            words = smalltalk.split(" ")
-            for w in words:
-                yield f"data: {json.dumps({'delta': w + ' ', 'model': 'CarePulse AI Assistant'})}\n\n"
-                await asyncio.sleep(0.015)
-            yield "data: [DONE]\n\n"
-            return
-
         endpoint = self.get_api_endpoint()
         model_name = settings.LLM_MODEL
         headers = {
@@ -844,7 +859,13 @@ class LLMService:
         }
 
         # Build clean conversation for PARL Orchestration
-        conversation: List[Dict[str, Any]] = [{"role": "system", "content": CAREPULSE_SYSTEM_PROMPT}]
+        incoming_system_context = ""
+        for m in messages:
+            if m.get("role") == "system":
+                incoming_system_context += "\n\n" + str(m.get("content", ""))
+
+        full_system_prompt = CAREPULSE_SYSTEM_PROMPT + incoming_system_context
+        conversation: List[Dict[str, Any]] = [{"role": "system", "content": full_system_prompt}]
         for m in messages:
             if m.get("role") != "system":
                 conversation.append({"role": m["role"], "content": m["content"]})
@@ -853,10 +874,10 @@ class LLMService:
         collected_web_sources: List[Dict[str, Any]] = []
 
         try:
-            timeout_cfg = httpx.Timeout(5.0, connect=2.0)
+            timeout_cfg = httpx.Timeout(float(settings.LLM_TIMEOUT), connect=15.0)
             async with httpx.AsyncClient(timeout=timeout_cfg) as client:
-                # ── PARL Step 1: Tool Selection & Execution Loop (Up to 2 steps) ──
-                for step_idx in range(2):
+                # ── PARL Step 1: Tool Selection & Execution Loop (Up to 5 steps) ──
+                for step_idx in range(5):
                     tool_check_payload = {
                         "model": model_name,
                         "messages": conversation,
@@ -927,6 +948,10 @@ class LLMService:
                     if response.status_code == 200:
                         modal_success = True
                         cleaner = GemmaStreamCleaner()
+                        # Track whether model used native reasoning separation
+                        seen_native_reasoning = False
+                        total_content_emitted = 0
+
                         async for line in response.aiter_lines():
                             if not line:
                                 continue
@@ -934,10 +959,14 @@ class LLMService:
                                 raw_data = line[6:].strip()
                                 if raw_data == "[DONE]":
                                     ft, fc = cleaner.flush()
-                                    if ft:
+                                    if ft and not seen_native_reasoning:
                                         yield f"data: {json.dumps({'thinking': ft, 'model': model_name})}\n\n"
                                     if fc:
                                         yield f"data: {json.dumps({'delta': fc, 'model': model_name})}\n\n"
+                                        total_content_emitted += len(fc)
+                                    if total_content_emitted == 0:
+                                        synthesized = self._synthesize_live_response(user_query, collected_web_sources, [])
+                                        yield f"data: {json.dumps({'delta': synthesized, 'model': f'{model_name} (CarePulse Synthesis)'})}\n\n"
                                     yield "data: [DONE]\n\n"
                                     break
                                 try:
@@ -948,23 +977,39 @@ class LLMService:
                                     # Native reasoning delta from vLLM (--reasoning-parser gemma4)
                                     native_reasoning = delta_obj.get("reasoning", "")
                                     if native_reasoning:
+                                        seen_native_reasoning = True
                                         yield f"data: {json.dumps({'thinking': native_reasoning, 'model': model_name})}\n\n"
 
                                     # Content delta
                                     raw_content = delta_obj.get("content", "")
                                     if raw_content:
-                                        thought_chunk, content_chunk = cleaner.process(raw_content)
-                                        if thought_chunk:
-                                            yield f"data: {json.dumps({'thinking': thought_chunk, 'model': model_name})}\n\n"
-                                        if content_chunk:
-                                            yield f"data: {json.dumps({'delta': content_chunk, 'model': model_name})}\n\n"
+                                        if seen_native_reasoning:
+                                            # Model already separated reasoning natively — stream content directly
+                                            clean = raw_content
+                                            for tok in _SPECIAL_TOKENS:
+                                                clean = clean.replace(tok, "")
+                                            if clean:
+                                                yield f"data: {json.dumps({'delta': clean, 'model': model_name})}\n\n"
+                                                total_content_emitted += len(clean)
+                                        else:
+                                            thought_chunk, content_chunk = cleaner.process(raw_content)
+                                            if thought_chunk:
+                                                yield f"data: {json.dumps({'thinking': thought_chunk, 'model': model_name})}\n\n"
+                                            if content_chunk:
+                                                yield f"data: {json.dumps({'delta': content_chunk, 'model': model_name})}\n\n"
+                                                total_content_emitted += len(content_chunk)
                                 except Exception:
                                     pass
                         ft, fc = cleaner.flush()
-                        if ft:
+                        if ft and not seen_native_reasoning:
                             yield f"data: {json.dumps({'thinking': ft, 'model': model_name})}\n\n"
                         if fc:
                             yield f"data: {json.dumps({'delta': fc, 'model': model_name})}\n\n"
+                            total_content_emitted += len(fc)
+                        if total_content_emitted == 0:
+                            synthesized = self._synthesize_live_response(user_query, collected_web_sources, [])
+                            yield f"data: {json.dumps({'delta': synthesized, 'model': f'{model_name} (CarePulse Synthesis)'})}\n\n"
+
         except Exception as e:
             logger.warning(f"PARL Modal agentic stream failed ({e}), falling back to live web stream.")
 
