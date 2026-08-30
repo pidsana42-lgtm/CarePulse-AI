@@ -320,7 +320,7 @@ export default function AssessmentPage() {
                       className="mt-2 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-full bg-emerald-700 px-4 text-xs font-bold text-white hover:bg-emerald-800 disabled:cursor-wait disabled:opacity-60"
                     >
                       {documentReviewing ? <Loader2 className="size-4 animate-spin" /> : <FileCheck2 className="size-4" />}
-                      {documentReviewing ? 'กำลังเติมข้อมูลใหม่...' : 'นำข้อความนี้มาเติมแบบฟอร์มใหม่'}
+                      {documentReviewing ? 'กำลังอ่านชื่อใหม่...' : 'นำข้อความนี้มาเติมชื่อใหม่'}
                     </button>
                   </div>
                 )}
