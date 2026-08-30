@@ -228,7 +228,7 @@ export function CostEstimator({ initialScheme = 'ucs', detectedSchemeName, priva
         <div className="grid gap-6 xl:grid-cols-12">
           {/* Liquid Glass Form */}
           <div className="flex flex-col gap-7 rounded-[32px] border border-black/[0.06] bg-white p-6 shadow-[0_16px_50px_-36px_rgba(7,43,119,0.45)] sm:p-8 xl:col-span-3">
-            <div>
+            {/* <div>
               <span className="text-lg font-black text-slate-950">เลือกวิธีระบุราคาการรักษา</span>
               <div role="tablist" aria-label="วิธีระบุราคาการรักษา" className="mt-3 grid grid-cols-2 gap-2 rounded-2xl bg-[#f5f5f7] p-2">
                 <button
@@ -250,7 +250,7 @@ export function CostEstimator({ initialScheme = 'ucs', detectedSchemeName, priva
                   <span className="flex items-center gap-2 text-base font-black"><ScanLine className="size-5" /> สแกนภาพ</span>
                 </button>
               </div>
-            </div>
+            </div> */}
 
             {priceInputMode === 'scan' && (
               <div role="tabpanel" className="rounded-3xl border-2 border-dashed border-[#115af2]/30 bg-[#eef5ff] p-5">

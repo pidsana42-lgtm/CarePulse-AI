@@ -5,10 +5,8 @@ import Link from 'next/link';
 import {
   AlertTriangle,
   ArrowRight,
-  Bot,
   CheckCircle2,
   Eye,
-  FileHeart,
   FileSearch,
   Sparkles,
   X,
@@ -101,10 +99,18 @@ export default function ResultsPage() {
         {registry && (
           <section className="bg-white px-1 py-8 sm:px-4 sm:py-10">
             <div>
-              <div className="mb-5">
-                <p className="text-xs font-semibold text-[#115af2]">สิทธิและกรมธรรม์ที่ตรวจพบ</p>
-                <h2 className="mt-1 text-2xl font-semibold text-[#1d1d1f]">ตารางความคุ้มครองของคุณ</h2>
-                <p className="mt-2 text-xs text-[#6e6e73]">กดรายการในตารางเพื่อดูข้อมูลสิทธิ หน่วยบริการ และเงื่อนไขฉบับเต็ม</p>
+              <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p className="text-xs font-semibold text-[#115af2]">สิทธิและกรมธรรม์ที่ตรวจพบ</p>
+                  <h2 className="mt-1 text-2xl font-semibold text-[#1d1d1f]">ตารางความคุ้มครองของคุณ</h2>
+                  <p className="mt-2 text-xs text-[#6e6e73]">กดรายการในตารางเพื่อดูข้อมูลสิทธิ หน่วยบริการ และเงื่อนไขฉบับเต็ม</p>
+                </div>
+                <Link
+                  href={`/search?from=results&q=${encodeURIComponent(`ช่วยอธิบายสิทธิ ${registry.entitlement.scheme_name} และบอกเอกสารกับขั้นตอนที่ควรทำต่อ`)}`}
+                  className="inline-flex h-10 shrink-0 items-center justify-center gap-2 self-start rounded-full bg-[#115af2] px-5 text-xs font-semibold text-white transition hover:bg-[#1a7bf0] sm:self-auto"
+                >
+                  <Sparkles className="size-4" /> ถาม AI จากผลนี้
+                </Link>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[980px] border-separate border-spacing-0 text-left">
@@ -183,41 +189,25 @@ export default function ResultsPage() {
             <span className="mt-2 max-w-2xl text-xs leading-relaxed text-white/75 sm:text-sm">
               รวมราคาการรักษา สิทธิภาครัฐ ประกันสุขภาพ และประเภทโรงพยาบาล แล้วแยกให้เห็นว่าระบบช่วยจ่ายเท่าไร เหลือจ่ายเองเท่าไร
             </span>
-            <Link
-              href="/estimate"
-              className="mt-6 inline-flex h-11 items-center justify-center gap-2 rounded-full bg-white px-6 text-sm font-semibold text-[#072b77] shadow transition hover:bg-[#eaf4ff]"
-            >
-              คำนวณค่ารักษา <ArrowRight className="size-4" />
-            </Link>
+            <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <Link
+                href="/scan"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-white/40 bg-white/10 px-6 text-sm font-semibold text-white transition hover:bg-white/20"
+              >
+                <FileSearch className="size-4" /> อ่านใบรับรองแพทย์
+              </Link>
+              <Link
+                href="/estimate"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-white px-6 text-sm font-semibold text-[#072b77] shadow transition hover:bg-[#eaf4ff]"
+              >
+                คำนวณค่ารักษา <ArrowRight className="size-4" />
+              </Link>
+            </div>
           </div>
         </div>
       </section>
 
-      <div className="relative z-10 mx-auto w-full max-w-[1440px] space-y-6 px-4 py-8 sm:px-8 sm:py-12 print:max-w-none print:p-0">
-        <section className="grid gap-4 md:grid-cols-2 print:hidden">
-          <div className="bg-white flex px-2 py-7 sm:px-6">
-            <div className="flex flex-1 flex-col">
-              <span className="flex size-11 items-center justify-center rounded-full bg-[#e8f1ff] text-[#115af2]"><Bot className="size-6" /></span>
-              <h2 className="mt-4 text-base font-semibold text-[#1d1d1f]">ถาม CarePulse AI เรื่องสิทธิ</h2>
-              <p className="mt-1 min-h-10 text-xs leading-relaxed text-[#6e6e73]">ให้ AI สรุปเอกสาร ขั้นตอน และเงื่อนไขจากผลนี้เป็นภาษาง่าย</p>
-            </div>
-            <Link href={`/search?from=results&q=${encodeURIComponent(registry ? `ช่วยอธิบายสิทธิ ${registry.entitlement.scheme_name} และบอกเอกสารกับขั้นตอนที่ควรทำต่อ` : 'ช่วยอธิบายสิทธิสุขภาพและขั้นตอนที่ควรทำต่อ')}`} className="mt-4 inline-flex h-10 items-center gap-2 rounded-full bg-[#115af2] px-4 text-xs font-semibold text-white">
-              <Sparkles className="size-4" /> ถามจากผลนี้
-            </Link>
-          </div>
-
-          <div className="flex items-start gap-4 bg-white px-2 py-7 sm:px-6">
-            <div className="flex flex-1 flex-col">
-              <span className="flex size-11 items-center justify-center rounded-2xl bg-[#dff8ff] text-[#115af2]"><FileHeart className="size-6" /></span>
-              <h2 className="mt-4 text-base font-black text-slate-950">มีใบรับรองแพทย์? ให้ AI ค้นหาสิทธิเพิ่ม</h2>
-              <p className="mt-1 min-h-10 text-xs leading-relaxed text-slate-600">อ่านการวินิจฉัย ภาวะพึ่งพิง และอุปกรณ์ที่แพทย์แนะนำ <br />เพื่อจับคู่สิทธิฟื้นฟู การดูแลระยะยาว หรือเครื่องช่วย</p>
-            </div>
-            <Link href="/scan" className="mt-1 inline-flex h-10 shrink-0 items-center gap-2 rounded-full bg-[#115af2] px-4 text-xs font-black text-white hover:bg-[#1a7bf0]">
-              <FileSearch className="size-4" /> อ่านใบรับรองแพทย์
-            </Link>
-          </div>
-        </section>
-
+      <div className="relative z-10 mx-auto w-full max-w-[1440px] px-4 py-8 sm:px-8 sm:py-12 print:max-w-none print:p-0">
         <p className="rounded-2xl border border-amber-200/80 bg-amber-50/80 px-4 py-3 text-[11px] leading-relaxed text-amber-950"><strong>ข้อมูลสาธิต:</strong> ระบบยังไม่ได้เชื่อมข้อมูลรายบุคคลจริงจากหน่วยงานรัฐ บริษัทประกัน หรือรายชื่อโรงพยาบาล กรุณายืนยันข้อมูลก่อนใช้บริการจริง</p>
       </div>
 

@@ -13,6 +13,12 @@ class DocumentUploadResponse(BaseModel):
     message: str
 
 
+class DocumentTextReviewRequest(BaseModel):
+    filename: str = Field(..., min_length=1, max_length=255)
+    document_type: str = Field(default="medical_certificate", max_length=64)
+    corrected_text: str = Field(..., min_length=1, max_length=30000)
+
+
 class SemanticSearchRequest(BaseModel):
     query: str
     top_k: int = 3

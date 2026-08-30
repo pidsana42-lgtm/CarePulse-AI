@@ -1,0 +1,5 @@
+Visual route: Codex Grid composition reference, adapted to CarePulse's existing blue/cyan product palette.
+Canvas: 1280x720, white, black/navy typography, pale-gray panels, restrained blue/cyan/coral accents.
+Candidate layout references: slide-08 cover-image field, slide-17 process timeline, slide-07 three-part flow, slide-10 checklist/two-column.
+Typography: Thai system sans; 78px cover title, 50px slide titles, 22px body, 17px supporting text.
+Slides are rendered as high-resolution bitmap pages and embedded full-bleed in PPTX because the configured artifact-tool runtime is unavailable in this session.

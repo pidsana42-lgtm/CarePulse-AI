@@ -2,7 +2,7 @@ import logging
 import uuid
 import re
 from datetime import datetime
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from app.core.pdpa_masking import pdpa_masker
 from app.services.real_ocr_service import real_ocr_service
 
@@ -17,15 +17,25 @@ class AIMedicalCertificateReader:
     """
 
     @staticmethod
-    async def analyze_medical_document(filename: str, file_bytes: bytes, doc_type: str = "medical_certificate") -> Dict[str, Any]:
+    async def analyze_medical_document(
+        filename: str,
+        file_bytes: bytes,
+        doc_type: str = "medical_certificate",
+        corrected_text: Optional[str] = None,
+    ) -> Dict[str, Any]:
         doc_id = f"MED-{uuid.uuid4().hex[:8].upper()}"
         from app.services.llm_service import llm_service
 
         # 1. Run Real OCR on image / document bytes
-        ocr_result = real_ocr_service.extract_text(file_bytes, filename)
-        raw_text = ocr_result.get("text", "")
-        ocr_engine = ocr_result.get("engine", "none")
-        ocr_confidence = ocr_result.get("confidence", 0.92)
+        if corrected_text is not None:
+            raw_text = corrected_text.strip()
+            ocr_engine = "user_reviewed"
+            ocr_confidence = 1.0
+        else:
+            ocr_result = real_ocr_service.extract_text(file_bytes, filename)
+            raw_text = ocr_result.get("text", "")
+            ocr_engine = ocr_result.get("engine", "none")
+            ocr_confidence = ocr_result.get("confidence", 0.92)
 
         logger.info(f"Real OCR on {filename}: Engine={ocr_engine}, Extracted {len(raw_text)} chars")
 
@@ -73,6 +83,8 @@ class AIMedicalCertificateReader:
         )
 
         try:
+            if corrected_text is not None:
+                raise RuntimeError("ใช้ข้อความที่ผู้ใช้ตรวจทานแล้วแทนการวิเคราะห์ภาพซ้ำ")
             timeout_cfg = _httpx.Timeout(4.0, connect=1.5, read=3.0)
             async with _httpx.AsyncClient(timeout=timeout_cfg) as _client:
                 _resp = await _client.post(
@@ -104,7 +116,8 @@ class AIMedicalCertificateReader:
                 raise Exception(f"HTTP {_resp.status_code}")
         except Exception as e:
             logger.info(f"Gemma-4 Vision offline/cold ({e}), instant clinical reasoning from OCR text")
-            vision_analysis = f"วิเคราะห์จากข้อความที่ระบบอ่านได้จากเอกสารภาษาไทยและภาษาอังกฤษ: {raw_text[:200]}"
+            if corrected_text is None:
+                vision_analysis = f"วิเคราะห์จากข้อความที่ระบบอ่านได้จากเอกสารภาษาไทยและภาษาอังกฤษ: {raw_text[:200]}"
 
 
         # 4. Parse Image Metadata
@@ -291,6 +304,7 @@ class AIMedicalCertificateReader:
             "ai_model": "Gemma-4 ระบบวิเคราะห์ภาพและเหตุผลทางการแพทย์",
             "ocr_engine": ocr_engine,
             "ocr_raw_text": raw_text if raw_text else "อ่านข้อมูลภาพเรียบร้อยแล้ว (ไม่พบตัวอักษรพิมพ์ชัดเจน)",
+            "reviewed_by_user": corrected_text is not None,
             "detected_hospital": detected_hospital,
             "detected_conditions": detected_conditions,
             "is_bedridden_or_adl_limited": is_bedridden,
@@ -320,7 +334,11 @@ class AIMedicalCertificateReader:
             "extracted_data": extracted_raw,
             "masked_preview": masked_preview,
             "ocr_confidence": ocr_confidence,
-            "message": "Gemma-4 AI ได้ทำการอ่านและวิเคราะห์ใบรับรองแพทย์ พร้อมคำนวณสิทธิเรียบร้อยแล้ว"
+            "message": (
+                "บันทึกข้อความที่ผู้ใช้ตรวจทานและวิเคราะห์สิทธิใหม่เรียบร้อยแล้ว"
+                if corrected_text is not None
+                else "Gemma-4 AI ได้ทำการอ่านและวิเคราะห์ใบรับรองแพทย์ พร้อมคำนวณสิทธิเรียบร้อยแล้ว"
+            )
         }
 
 

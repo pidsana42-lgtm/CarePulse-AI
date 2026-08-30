@@ -1,5 +1,5 @@
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
-from app.models.document import DocumentUploadResponse
+from app.models.document import DocumentTextReviewRequest, DocumentUploadResponse
 from app.services.ocr_service import ocr_service
 import logging
 
@@ -30,3 +30,14 @@ async def scan_and_extract_document(
     )
 
     return result
+
+
+@router.post("/review", response_model=DocumentUploadResponse)
+async def review_extracted_document_text(request: DocumentTextReviewRequest):
+    """Re-run benefit matching from OCR text that the user has reviewed and corrected."""
+    return await ocr_service.process_document(
+        filename=request.filename,
+        file_bytes=b"",
+        doc_type=request.document_type,
+        corrected_text=request.corrected_text,
+    )

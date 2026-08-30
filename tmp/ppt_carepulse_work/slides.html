@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1280, initial-scale=1" />
+<title>CarePulse — How it works</title>
+<style>
+  :root {
+    --ink: #071c35;
+    --muted: #53657a;
+    --rule: #cbd5df;
+    --panel: #eef3f7;
+    --blue: #115af2;
+    --cyan: #00a9bd;
+    --cyan-lite: #dff8fb;
+    --lime: #b7e45a;
+    --coral: #ff7b65;
+    --white: #ffffff;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 1280px; height: 720px; overflow: hidden; background: #fff; }
+  body { font-family: "Thonburi", "Sukhumvit Set", "Noto Sans Thai", Arial, sans-serif; color: var(--ink); }
+  .slide { display: none; position: relative; width: 1280px; height: 720px; overflow: hidden; background: #fff; padding: 48px 58px 44px; }
+  .slide.active { display: block; }
+  .slide::after { content: attr(data-page); position: absolute; right: 58px; bottom: 24px; font-size: 14px; color: #7f8c99; }
+  .topline { position: absolute; left: 58px; right: 58px; top: 28px; height: 2px; background: linear-gradient(90deg, var(--blue) 0 18%, var(--cyan) 18% 29%, #dfe6ec 29% 100%); }
+  .eyebrow { font-size: 15px; font-weight: 700; letter-spacing: .08em; color: var(--blue); text-transform: uppercase; }
+  h1 { margin: 0; font-size: 78px; line-height: 1.03; letter-spacing: -1.5px; }
+  h2 { margin: 0; font-size: 50px; line-height: 1.08; letter-spacing: -.6px; }
+  h3 { margin: 0; font-size: 27px; line-height: 1.2; }
+  p { margin: 0; font-size: 22px; line-height: 1.5; color: var(--muted); }
+  .accent { color: var(--blue); }
+  .cyan { color: var(--cyan); }
+  .muted { color: var(--muted); }
+  .small { font-size: 17px; line-height: 1.45; }
+  .micro { font-size: 14px; line-height: 1.4; }
+  .rule { height: 1px; background: var(--rule); }
+  .brand { display: flex; align-items: center; gap: 11px; font-size: 19px; font-weight: 800; }
+  .brand-mark { position: relative; width: 34px; height: 34px; border-radius: 50%; background: var(--blue); }
+  .brand-mark::before, .brand-mark::after { content: ""; position: absolute; background: #fff; border-radius: 3px; }
+  .brand-mark::before { width: 18px; height: 6px; left: 8px; top: 14px; }
+  .brand-mark::after { width: 6px; height: 18px; left: 14px; top: 8px; }
+  .footer-note { position: absolute; left: 58px; bottom: 23px; z-index: 100; padding-right: 8px; background: #fff; font-size: 14px; color: #7f8c99; }
+
+  /* Slide 1 */
+  .s1 { background: linear-gradient(135deg, #fff 0 66%, #f0fbfc 66% 100%); }
+  .s1::after { display:none; }
+  .s1 .left { position: absolute; left: 70px; top: 56px; width: 590px; height: 610px; display: flex; flex-direction: column; }
+  .s1 h1 { margin-top: 98px; }
+  .s1 .sub { margin-top: 27px; max-width: 530px; font-size: 25px; }
+  .s1 .meta { margin-top: auto; padding-top: 22px; border-top: 1px solid var(--rule); display: flex; gap: 40px; }
+  .s1 .meta span { font-size: 16px; color: var(--muted); }
+  .s1 .screen { position: absolute; right: 55px; top: 58px; width: 535px; height: 590px; border: 1px solid #bfd2df; border-radius: 22px; background: #fff; box-shadow: 0 24px 60px rgba(16, 55, 86, .13); overflow: hidden; }
+  .screen-head { height: 70px; padding: 18px 24px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #d8e1e8; }
+  .screen-user { font-size: 15px; color: var(--muted); }
+  .screen-body { padding: 24px; }
+  .status-line { display: flex; align-items: center; gap: 14px; }
+  .status-ring { width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-size: 26px; background: var(--cyan); }
+  .right-name { font-size: 25px; font-weight: 800; line-height: 1.2; }
+  .coverage { margin-top: 26px; padding: 22px 0 20px; border-top: 1px solid #d8e1e8; border-bottom: 1px solid #d8e1e8; display: grid; grid-template-columns: 1.15fr .85fr; gap: 22px; }
+  .coverage strong { display: block; font-size: 35px; margin-bottom: 5px; }
+  .coverage span { font-size: 15px; color: var(--muted); }
+  .next { margin-top: 24px; }
+  .next h3 { font-size: 20px; }
+  .next-step { margin-top: 16px; display: grid; grid-template-columns: 36px 1fr; gap: 12px; align-items: start; }
+  .next-step b { width: 30px; height: 30px; border-radius: 50%; background: var(--panel); display: grid; place-items: center; font-size: 14px; }
+  .next-step div { font-size: 17px; line-height: 1.35; }
+
+  /* Slide 2 */
+  .s2 .question { position: absolute; left: 58px; top: 112px; width: 600px; }
+  .s2 .question h2 { font-size: 58px; }
+  .s2 .statement { position: absolute; left: 58px; top: 420px; width: 600px; padding-top: 22px; border-top: 5px solid var(--blue); font-size: 27px; line-height: 1.35; font-weight: 700; }
+  .s2 .pain-list { position: absolute; right: 60px; top: 115px; width: 475px; }
+  .pain { padding: 25px 0 26px; border-bottom: 1px solid var(--rule); display: grid; grid-template-columns: 70px 1fr; gap: 20px; }
+  .pain:first-child { border-top: 1px solid var(--rule); }
+  .pain-num { font-size: 45px; font-weight: 300; color: var(--cyan); }
+  .pain h3 { font-size: 27px; margin-bottom: 7px; }
+
+  /* Slide 3 */
+  .s3 h2 { position: absolute; left: 58px; top: 70px; width: 1050px; }
+  .journey-line { position: absolute; left: 120px; right: 120px; top: 346px; height: 3px; background: #93a4b4; }
+  .journey-line::after { content:""; position:absolute; right:-1px; top:-7px; width:0; height:0; border-left:16px solid #93a4b4; border-top:8px solid transparent; border-bottom:8px solid transparent; }
+  .journey { position: absolute; left: 70px; right: 70px; top: 205px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 28px; }
+  .step { position: relative; min-height: 360px; }
+  .step-kicker { font-size: 15px; font-weight: 800; color: var(--blue); }
+  .step h3 { margin-top: 10px; font-size: 28px; max-width: 230px; }
+  .step-dot { position: absolute; top: 131px; left: 2px; width: 22px; height: 22px; border-radius: 50%; background: #fff; border: 6px solid var(--blue); z-index: 2; }
+  .step p { position: absolute; top: 185px; left: 0; width: 245px; font-size: 19px; line-height: 1.45; }
+  .step:nth-child(2) .step-dot { border-color: var(--cyan); }
+  .step:nth-child(3) .step-dot { border-color: var(--coral); }
+  .step:nth-child(4) .step-dot { border-color: #6a57cf; }
+
+  /* Slide 4 */
+  .s4 h2 { position:absolute; left:58px; top:68px; width:1110px; }
+  .profile { position:absolute; left:420px; top:255px; width:440px; height:240px; border-radius: 120px; background: var(--ink); color:#fff; display:flex; flex-direction:column; justify-content:center; padding:50px 78px; text-align:center; }
+  .profile .big { font-size:34px; font-weight:800; line-height:1.22; }
+  .profile .small { color:#c9d9e8; margin-top:10px; }
+  .input { position:absolute; width:300px; border-top: 3px solid; padding-top:16px; }
+  .input h3 { font-size:25px; margin-bottom:7px; }
+  .input p { font-size:18px; line-height:1.4; }
+  .input.a { left:74px; top:236px; border-color:var(--blue); }
+  .input.b { right:74px; top:236px; border-color:var(--cyan); }
+  .input.c { left:74px; top:505px; border-color:var(--coral); }
+  .input.d { right:74px; top:505px; border-color:#6a57cf; }
+  .spoke { position:absolute; height:2px; background:#b9c7d2; transform-origin:left center; }
+  .spoke.a { left:339px; top:350px; width:112px; transform:rotate(0deg); }
+  .spoke.b { left:829px; top:350px; width:112px; }
+  .spoke.c { left:345px; top:512px; width:122px; transform:rotate(-25deg); }
+  .spoke.d { left:815px; top:512px; width:125px; transform:rotate(25deg); }
+
+  /* Slide 5 */
+  .s5 h2 { position:absolute; left:58px; top:70px; width:1050px; }
+  .engine-rail { position:absolute; left:96px; right:96px; top:355px; height:4px; background:#90a2b5; }
+  .engine-rail::after { content:""; position:absolute; right:-2px; top:-8px; width:0; height:0; border-left:18px solid #90a2b5; border-top:10px solid transparent; border-bottom:10px solid transparent; }
+  .engine { position:absolute; left:74px; right:74px; top:210px; display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:24px; }
+  .engine-node { position:relative; height:285px; padding:24px 22px; background:#fff; border:1px solid #bdcad6; }
+  .engine-node::after { content:""; position:absolute; left:21px; top:136px; width:20px; height:20px; border-radius:50%; background:var(--blue); border:5px solid #fff; box-shadow:0 0 0 2px var(--blue); }
+  .engine-node:nth-child(2)::after { background:var(--cyan); box-shadow:0 0 0 2px var(--cyan); }
+  .engine-node:nth-child(3)::after { background:var(--coral); box-shadow:0 0 0 2px var(--coral); }
+  .engine-node:nth-child(4)::after { background:#6a57cf; box-shadow:0 0 0 2px #6a57cf; }
+  .engine-node .num { font-size:15px; font-weight:800; color:var(--blue); }
+  .engine-node h3 { margin-top:10px; font-size:26px; }
+  .engine-node p { margin-top:86px; font-size:17px; line-height:1.42; }
+  .guardrail { position:absolute; left:74px; right:74px; top:548px; height:78px; border-top:1px solid var(--rule); display:flex; align-items:center; justify-content:space-between; }
+  .guardrail strong { font-size:20px; }
+  .guardrail span { max-width:770px; color:var(--muted); font-size:17px; line-height:1.4; text-align:right; }
+
+  /* Slide 6 */
+  .s6 h2 { position:absolute; left:58px; top:68px; width:1000px; }
+  .result-screen { position:absolute; left:58px; top:175px; width:700px; height:455px; background:#fff; border:1px solid #b9c8d4; box-shadow:0 18px 45px rgba(27,54,79,.10); }
+  .result-top { height:75px; background:var(--ink); color:#fff; padding:20px 26px; display:flex; align-items:center; justify-content:space-between; }
+  .result-top b { font-size:24px; }
+  .result-top span { font-size:15px; color:#c9d7e4; }
+  .result-main { display:grid; grid-template-columns:1.12fr .88fr; height:380px; }
+  .result-primary { padding:25px 28px; border-right:1px solid #d2dce4; }
+  .result-primary .ok { color:var(--cyan); font-weight:800; font-size:15px; }
+  .result-primary h3 { margin-top:8px; font-size:30px; }
+  .result-primary p { margin-top:9px; font-size:17px; }
+  .money { margin-top:25px; padding:18px 0; border-top:1px solid #d2dce4; border-bottom:1px solid #d2dce4; }
+  .money strong { display:block; font-size:34px; }
+  .money span { color:var(--muted); font-size:14px; }
+  .result-side { padding:25px 24px; background:#f5f8fa; }
+  .side-row { padding:0 0 17px; margin-bottom:17px; border-bottom:1px solid #d2dce4; }
+  .side-row:last-child { border:0; }
+  .side-row b { display:block; font-size:18px; margin-bottom:5px; }
+  .side-row span { font-size:15px; line-height:1.35; color:var(--muted); }
+  .outcomes { position:absolute; right:60px; top:188px; width:410px; }
+  .outcome { padding:19px 0 20px; border-bottom:1px solid var(--rule); display:grid; grid-template-columns:48px 1fr; gap:14px; }
+  .outcome:first-child { border-top:1px solid var(--rule); }
+  .outcome i { font-style:normal; width:34px; height:34px; display:grid; place-items:center; border-radius:50%; background:var(--cyan-lite); color:var(--cyan); font-weight:900; }
+  .outcome h3 { font-size:22px; }
+  .outcome p { font-size:16px; margin-top:3px; line-height:1.35; }
+
+  /* Slide 7 */
+  .s7 h2 { position:absolute; left:58px; top:68px; width:1090px; }
+  .doc { position:absolute; left:70px; top:190px; width:330px; height:395px; background:#fff; border:1px solid #aebdca; box-shadow:0 18px 40px rgba(20,42,65,.12); transform:rotate(-2deg); padding:28px 30px; }
+  .doc .redacted { display:inline-block; height:14px; background:#1e2f40; margin-top:15px; }
+  .doc .w1 { width:220px; }
+  .doc .w2 { width:170px; }
+  .doc .w3 { width:245px; }
+  .doc .doc-rule { height:1px; background:#d7dfe6; margin:23px 0; }
+  .doc .stamp { margin:28px auto 0; width:110px; height:110px; border-radius:50%; border:5px double var(--blue); display:grid; place-items:center; color:var(--blue); font-size:18px; font-weight:800; transform:rotate(-11deg); }
+  .scan-line { position:absolute; left:60px; top:355px; width:355px; height:3px; background:var(--cyan); box-shadow:0 0 22px 5px rgba(0,169,189,.32); transform:rotate(-2deg); }
+  .ai-pipeline { position:absolute; left:470px; top:190px; width:740px; }
+  .ai-stage { display:grid; grid-template-columns:90px 1fr; gap:22px; padding:20px 0; border-bottom:1px solid var(--rule); }
+  .ai-stage:first-child { border-top:1px solid var(--rule); }
+  .ai-stage .tag { font-size:14px; font-weight:900; color:var(--blue); padding-top:4px; }
+  .ai-stage h3 { font-size:25px; margin-bottom:4px; }
+  .ai-stage p { font-size:17px; line-height:1.4; }
+  .ai-note { position:absolute; left:470px; right:70px; top:575px; padding-top:18px; border-top:4px solid var(--coral); font-size:17px; line-height:1.42; color:var(--muted); }
+  .ai-note strong { color:var(--ink); }
+  .s7 .footer-note { left: 470px; }
+
+  /* Slide 8 */
+  .s8 h2 { position:absolute; left:58px; top:68px; width:1050px; }
+  .arch-flow { position:absolute; left:100px; right:100px; top:318px; height:4px; background:#9fb0bf; }
+  .arch-flow::after { content:""; position:absolute; right:-4px; top:-8px; width:0; height:0; border-left:18px solid #9fb0bf; border-top:10px solid transparent; border-bottom:10px solid transparent; }
+  .arch-row { position:absolute; left:70px; right:70px; top:205px; display:grid; grid-template-columns:1fr 1.08fr 1.08fr 1fr; gap:26px; }
+  .arch-node { position:relative; height:225px; background:#fff; border:1px solid #b7c5d0; padding:25px 22px; }
+  .arch-node .layer { font-size:14px; font-weight:900; color:var(--blue); }
+  .arch-node h3 { margin-top:10px; font-size:25px; }
+  .arch-node p { position:absolute; left:22px; right:22px; top:146px; font-size:16px; line-height:1.35; }
+  .arch-storage { position:absolute; left:160px; right:160px; top:490px; display:grid; grid-template-columns:1fr 1fr 1fr; gap:18px; }
+  .store { height:92px; background:var(--panel); padding:18px 22px; display:flex; align-items:center; justify-content:space-between; }
+  .store b { font-size:20px; }
+  .store span { color:var(--muted); font-size:15px; text-align:right; line-height:1.3; }
+  .ops { position:absolute; left:160px; right:160px; top:604px; display:flex; justify-content:center; gap:44px; color:#5b6b7b; font-size:15px; }
+
+  /* Slide 9 */
+  .s9 h2 { position:absolute; left:58px; top:68px; width:1080px; }
+  .trust-grid { position:absolute; left:58px; right:58px; top:190px; display:grid; grid-template-columns:1fr 1fr; gap:60px; }
+  .trust-side { min-height:410px; }
+  .trust-side h3 { font-size:31px; padding-bottom:18px; border-bottom:4px solid var(--blue); }
+  .trust-side.demo h3 { border-color:var(--coral); }
+  .trust-item { display:grid; grid-template-columns:46px 1fr; gap:15px; padding:20px 0; border-bottom:1px solid var(--rule); }
+  .trust-item i { font-style:normal; width:32px; height:32px; border-radius:50%; background:var(--cyan-lite); color:var(--cyan); display:grid; place-items:center; font-weight:900; }
+  .trust-side.demo .trust-item i { background:#fff0ed; color:var(--coral); }
+  .trust-item b { display:block; font-size:21px; margin-bottom:4px; }
+  .trust-item span { color:var(--muted); font-size:16px; line-height:1.4; }
+  .boundary { position:absolute; left:58px; right:58px; bottom:50px; height:57px; background:var(--ink); color:#fff; display:flex; align-items:center; justify-content:center; text-align:center; font-size:18px; padding:0 35px; }
+
+  /* Slide 10 — comparison */
+  .s11 { padding:0; background:#fff; }
+  .s11::after { content:"10"; z-index:8; }
+  .s11 .comparison-art { position:absolute; left:70px; top:78px; width:1140px; height:642px; object-fit:contain; z-index:1; }
+  .s11 .title-wash { position:absolute; left:0; right:0; top:0; height:150px; z-index:2; background:linear-gradient(180deg,#fff 0 68%,rgba(255,255,255,.93) 83%,rgba(255,255,255,0) 100%); }
+  .s11 h2 { position:absolute; left:58px; top:38px; width:700px; z-index:4; font-size:52px; }
+  .s11 .thesis { position:absolute; right:58px; top:58px; width:430px; z-index:4; padding-left:20px; border-left:4px solid var(--cyan); font-size:21px; line-height:1.32; color:var(--ink); font-weight:700; }
+  .compare-label { position:absolute; z-index:5; padding:8px 13px 7px; border-radius:9px; background:rgba(255,255,255,.94); box-shadow:0 7px 18px rgba(25,65,97,.10); border:1px solid rgba(173,193,210,.78); }
+  .compare-label b { display:block; font-size:21px; line-height:1.05; }
+  .compare-label span { display:block; margin-top:3px; color:var(--muted); font-size:15px; }
+  .compare-label.gpt { left:328px; top:196px; }
+  .compare-label.google { left:292px; top:371px; }
+  .compare-label.gov { left:344px; top:557px; }
+  .carepulse-label { position:absolute; left:471px; top:574px; width:388px; height:82px; z-index:6; padding:13px 18px 10px; background:var(--ink); color:#fff; border-top:5px solid var(--cyan); box-shadow:0 15px 30px rgba(7,28,53,.16); }
+  .carepulse-label b { display:block; font-size:27px; line-height:1.05; }
+  .carepulse-label span { display:block; margin-top:7px; color:#c7d9e8; font-size:17px; }
+  .s11 .footer-note { z-index:9; }
+
+  /* Slide 10 */
+  .s10 { background:var(--ink); color:#fff; }
+  .s10::after { display:none; }
+  .s10 .brand { position:absolute; left:64px; top:48px; }
+  .s10 .brand-mark { background:var(--cyan); }
+  .s10 h2 { position:absolute; left:64px; top:170px; width:1050px; font-size:64px; line-height:1.12; color:#fff; }
+  .s10 .summary-line { position:absolute; left:64px; right:64px; top:425px; height:1px; background:#496076; }
+  .s10 .three { position:absolute; left:64px; right:64px; top:470px; display:grid; grid-template-columns:repeat(3,1fr); gap:36px; }
+  .s10 .close-item { padding-top:16px; border-top:4px solid var(--blue); }
+  .s10 .close-item:nth-child(2) { border-color:var(--cyan); }
+  .s10 .close-item:nth-child(3) { border-color:var(--coral); }
+  .s10 .close-item b { display:block; font-size:24px; margin-bottom:7px; }
+  .s10 .close-item span { display:block; color:#b9cad8; font-size:17px; line-height:1.42; }
+  .s10 .closing { position:absolute; left:64px; bottom:34px; font-size:15px; color:#7890a5; }
+</style>
+</head>
+<body>
+  <section class="slide s1" data-page="1">
+    <div class="left">
+      <div class="brand"><span class="brand-mark"></span>CarePulse AI</div>
+      <h1>เห็นสิทธิการรักษา<br><span class="accent">และค่าใช้จ่าย</span><br>ในที่เดียว</h1>
+      <p class="sub">แพลตฟอร์มประเมินสิทธิสุขภาพของไทย<br>ที่รวมกฎ สิทธิ สถานพยาบาล และคำแนะนำจาก AI</p>
+      <div class="meta"><span>ภาพรวมการทำงานของระบบ</span><span>CarePulse</span></div>
+    </div>
+    <div class="screen">
+      <div class="screen-head"><div class="brand"><span class="brand-mark"></span>CarePulse</div><div class="screen-user">ผลประเมินของคุณ</div></div>
+      <div class="screen-body">
+        <div class="status-line"><div class="status-ring">✓</div><div><div class="right-name">สิทธิหลักได้รับการจับคู่</div><div class="small muted">ข้อมูลพร้อมสำหรับวางแผนใช้สิทธิ</div></div></div>
+        <div class="coverage"><div><strong>บัตรทอง</strong><span>สิทธิหลักประกันสุขภาพแห่งชาติ</span></div><div><strong class="cyan">0 บาท*</strong><span>เครือข่ายหลักตามสิทธิ</span></div></div>
+        <div class="next"><h3>ขั้นตอนถัดไปที่ระบบแนะนำ</h3>
+          <div class="next-step"><b>1</b><div>ยืนยันหน่วยบริการประจำกับหน่วยงานเจ้าของสิทธิ</div></div>
+          <div class="next-step"><b>2</b><div>เตรียมเอกสารและเลือกโรงพยาบาลในเครือข่าย</div></div>
+          <div class="next-step"><b>3</b><div>ใช้ AI ช่วยอธิบายเงื่อนไขหรือเอกสารที่ยังไม่เข้าใจ</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide s2" data-page="2"><div class="topline"></div>
+    <div class="question"><div class="eyebrow">The problem</div><h2>คำถามจริงไม่ใช่แค่<br>“มีสิทธิอะไร”</h2><p style="margin-top:25px;max-width:550px">ผู้ใช้ต้องรู้ต่อว่าใช้สิทธิที่ไหน ครอบคลุมอะไร ต้องเตรียมเอกสารใด และมีค่าใช้จ่ายส่วนเกินหรือไม่</p></div>
+    <div class="statement">CarePulse เปลี่ยนข้อมูลสิทธิที่กระจัดกระจาย ให้เป็นแผนการใช้สิทธิที่ทำตามได้</div>
+    <div class="pain-list">
+      <div class="pain"><div class="pain-num">01</div><div><h3>ข้อมูลอยู่หลายหน่วยงาน</h3><p class="small">บัตรทอง ประกันสังคม ข้าราชการ คนพิการ และประกันเอกชนมีเงื่อนไขต่างกัน</p></div></div>
+      <div class="pain"><div class="pain-num">02</div><div><h3>ภาษาสิทธิเข้าใจยาก</h3><p class="small">ผู้ใช้เห็นกฎ แต่ยังไม่รู้ว่ากฎนั้นตรงกับสถานการณ์ของตนอย่างไร</p></div></div>
+      <div class="pain"><div class="pain-num">03</div><div><h3>ค่าใช้จ่ายไม่ชัดเจน</h3><p class="small">เครือข่ายโรงพยาบาลและบริการนอกเงื่อนไขทำให้ค่าใช้จ่ายจริงต่างกัน</p></div></div>
+    </div>
+    <div class="footer-note">CARE PULSE • WHY IT MATTERS</div>
+  </section>
+
+  <section class="slide s3" data-page="3"><div class="topline"></div>
+    <div class="eyebrow">Citizen journey</div><h2>กรอกครั้งเดียว แล้วรู้ขั้นตอนถัดไป</h2>
+    <div class="journey-line"></div>
+    <div class="journey">
+      <div class="step"><div class="step-kicker">STEP 1</div><h3>ยินยอมและระบุตัวตน</h3><div class="step-dot"></div><p>เลขบัตรประชาชน ชื่อ และตำแหน่งถูกใช้เท่าที่จำเป็นต่อการประเมิน</p></div>
+      <div class="step"><div class="step-kicker">STEP 2</div><h3>ตรวจสิทธิและบริบท</h3><div class="step-dot"></div><p>รวมสถานะสิทธิ อาชีพ จังหวัด ภาวะสุขภาพ และกรมธรรม์ที่เกี่ยวข้อง</p></div>
+      <div class="step"><div class="step-kicker">STEP 3</div><h3>จับคู่กฎและคำนวณ</h3><div class="step-dot"></div><p>Rules Engine, ข้อมูลโรงพยาบาล และ AI/RAG ประเมินความคุ้มครอง</p></div>
+      <div class="step"><div class="step-kicker">STEP 4</div><h3>สรุปผลแบบลงมือได้</h3><div class="step-dot"></div><p>แสดงสิทธิหลัก สิทธิเสริม ค่าใช้จ่าย เอกสาร และขั้นตอนใช้งาน</p></div>
+    </div>
+    <div class="footer-note">CARE PULSE • END-TO-END FLOW</div>
+  </section>
+
+  <section class="slide s4" data-page="4"><div class="topline"></div>
+    <div class="eyebrow">Inputs</div><h2>CarePulse มอง “สิทธิ” ผ่านบริบทของแต่ละคน</h2>
+    <div class="spoke a"></div><div class="spoke b"></div><div class="spoke c"></div><div class="spoke d"></div>
+    <div class="profile"><div class="big">โปรไฟล์การใช้สิทธิ</div><div class="small">ข้อมูลเท่าที่จำเป็น + ความยินยอม</div></div>
+    <div class="input a"><h3>สถานะสิทธิ</h3><p>อาชีพ สิทธิปัจจุบัน ผู้ประกันตน หรือสวัสดิการข้าราชการ</p></div>
+    <div class="input b"><h3>สถานการณ์สุขภาพ</h3><p>ความเร่งด่วน โรคเรื้อรัง และระดับการช่วยเหลือตนเอง</p></div>
+    <div class="input c"><h3>ความต้องการเพิ่มเติม</h3><p>บัตรคนพิการ ข้อจำกัดการเคลื่อนไหว และกายอุปกรณ์</p></div>
+    <div class="input d"><h3>สถานที่และเอกสาร</h3><p>จังหวัด ตำแหน่งปัจจุบัน และภาพเอกสารทางการแพทย์</p></div>
+    <div class="footer-note">CARE PULSE • PERSONALIZED CONTEXT</div>
+  </section>
+
+  <section class="slide s5" data-page="5"><div class="topline"></div>
+    <div class="eyebrow">Decision engine</div><h2>คำตอบเกิดจากกฎ ข้อมูลจริง และ AI ที่ทำงานร่วมกัน</h2>
+    <div class="engine-rail"></div>
+    <div class="engine">
+      <div class="engine-node"><div class="num">01 • RULES</div><h3>ตรวจเงื่อนไขสิทธิ</h3><div></div><p>จับคู่บัตรทอง ประกันสังคม ข้าราชการ UCEP สิทธิผู้สูงอายุ และคนพิการ</p></div>
+      <div class="engine-node"><div class="num">02 • DATA</div><h3>ตรวจเครือข่ายบริการ</h3><div></div><p>ค้นหาโรงพยาบาลตามจังหวัด สิทธิที่รองรับ และเงื่อนไขร่วมจ่าย</p></div>
+      <div class="engine-node"><div class="num">03 • RETRIEVAL</div><h3>ค้นนโยบายที่เกี่ยวข้อง</h3><div></div><p>Semantic Search ดึงคู่มือ นโยบาย และข้อมูลสิทธิที่ตรงกับคำถาม</p></div>
+      <div class="engine-node"><div class="num">04 • EXPLAIN</div><h3>แปลงเป็นคำแนะนำ</h3><div></div><p>LLM อธิบายผลเป็นภาษาง่าย พร้อมเหตุผล เอกสาร และขั้นตอนถัดไป</p></div>
+    </div>
+    <div class="guardrail"><strong>ผลลัพธ์ไม่ใช่การเดาเพียงอย่างเดียว</strong><span>ส่วนคำนวณสิทธิและค่าใช้จ่ายอิง Rules Engine + ชุดข้อมูลโรงพยาบาล ส่วน AI ใช้เพื่อค้นหาและอธิบาย</span></div>
+    <div class="footer-note">CARE PULSE • HYBRID INTELLIGENCE</div>
+  </section>
+
+  <section class="slide s6" data-page="6"><div class="topline"></div>
+    <div class="eyebrow">Outputs</div><h2>ผลประเมินตอบทั้ง “ได้อะไร” และ “ทำอย่างไร”</h2>
+    <div class="result-screen">
+      <div class="result-top"><b>สรุปสิทธิของคุณ</b><span>ปกป้องข้อมูลตาม PDPA</span></div>
+      <div class="result-main">
+        <div class="result-primary"><div class="ok">● มีแนวโน้มเข้าเกณฑ์</div><h3>สิทธิบัตรทอง</h3><p>ใช้บริการตามชุดสิทธิประโยชน์และหน่วยบริการในระบบหลักประกันสุขภาพแห่งชาติ</p><div class="money"><strong>0 บาท</strong><span>ที่เครือข่ายหลักตามสิทธิ*</span></div><p class="small">ยืนยันหน่วยบริการประจำก่อนรับบริการ และเตรียมบัตรประชาชน</p></div>
+        <div class="result-side"><div class="side-row"><b>สิทธิเสริม</b><span>การดูแลระยะยาว / กายอุปกรณ์ / สิทธิคนพิการ</span></div><div class="side-row"><b>หน่วยงานเกี่ยวข้อง</b><span>สปสช. • พม. • โรงพยาบาลในเครือข่าย</span></div><div class="side-row"><b>ขั้นตอนใช้งาน</b><span>ตรวจสอบสิทธิ → ติดต่อหน่วยบริการ → เตรียมเอกสาร</span></div></div>
+      </div>
+    </div>
+    <div class="outcomes">
+      <div class="outcome"><i>✓</i><div><h3>สิทธิหลัก + สิทธิเสริม</h3><p>แยกสิทธิที่ใช้รักษาและสิทธิช่วยเหลือเพิ่มเติม</p></div></div>
+      <div class="outcome"><i>฿</i><div><h3>ประมาณการค่าใช้จ่าย</h3><p>อิงเครือข่ายโรงพยาบาลและเงื่อนไขร่วมจ่าย</p></div></div>
+      <div class="outcome"><i>→</i><div><h3>คำแนะนำเฉพาะบุคคล</h3><p>เอกสาร ช่องทางติดต่อ และลำดับขั้นตอนถัดไป</p></div></div>
+      <div class="outcome"><i>◎</i><div><h3>โรงพยาบาลใกล้ผู้ใช้</h3><p>ใช้ตำแหน่งหรือจังหวัดเพื่อช่วยคัดเลือกเครือข่าย</p></div></div>
+    </div>
+    <div class="footer-note">*ผลจริงขึ้นกับการยืนยันกับหน่วยงานเจ้าของสิทธิ</div>
+  </section>
+
+  <section class="slide s7" data-page="7"><div class="topline"></div>
+    <div class="eyebrow">AI + documents</div><h2>เอกสารที่อ่านยาก กลายเป็นข้อมูลพร้อมประเมิน</h2>
+    <div class="doc"><div class="eyebrow">Medical document</div><div class="redacted w1"></div><div class="redacted w2"></div><div class="doc-rule"></div><div class="redacted w3"></div><div class="redacted w1"></div><div class="stamp">OCR<br>READY</div></div><div class="scan-line"></div>
+    <div class="ai-pipeline">
+      <div class="ai-stage"><div class="tag">OCR / VISION</div><div><h3>อ่านภาพเอกสาร</h3><p>ดึงข้อมูลจากใบรับรองแพทย์ ใบเสร็จ หรือเอกสารสิทธิ</p></div></div>
+      <div class="ai-stage"><div class="tag">STRUCTURE</div><div><h3>จัดข้อมูลให้พร้อมคำนวณ</h3><p>แยกสถานพยาบาล วันที่ การวินิจฉัย และความต้องการด้านอุปกรณ์</p></div></div>
+      <div class="ai-stage"><div class="tag">RAG</div><div><h3>ค้นกฎและคู่มือที่สัมพันธ์กัน</h3><p>ใช้ FAISS/Vector Search ดึงเนื้อหาจากฐานนโยบายและคู่มือของระบบ</p></div></div>
+      <div class="ai-stage"><div class="tag">LLM</div><div><h3>อธิบายเป็นภาษาคน</h3><p>สรุปความหมาย ข้อจำกัด และสิ่งที่ควรถามหน่วยงานเพิ่มเติม</p></div></div>
+    </div>
+    <div class="ai-note"><strong>ขอบเขตสำคัญ:</strong> AI ช่วยอ่าน ค้นหา และอธิบาย แต่การยืนยันสิทธิและการวินิจฉัยยังเป็นหน้าที่ของหน่วยงานเจ้าของสิทธิและบุคลากรทางการแพทย์</div>
+    <div class="footer-note">CARE PULSE • DOCUMENT INTELLIGENCE</div>
+  </section>
+
+  <section class="slide s8" data-page="8"><div class="topline"></div>
+    <div class="eyebrow">System architecture</div><h2>Microservices แยกหน้าที่ชัด ขยายและดูแลง่าย</h2>
+    <div class="arch-flow"></div>
+    <div class="arch-row">
+      <div class="arch-node"><div class="layer">EXPERIENCE</div><h3>Next.js Web</h3><p>Mobile-first, ถ่ายภาพเอกสาร, แบบประเมิน และหน้าผลลัพธ์</p></div>
+      <div class="arch-node"><div class="layer">CORE</div><h3>Spring Boot</h3><p>API Gateway, Eligibility Engine, PDPA Masking และบันทึกผล</p></div>
+      <div class="arch-node"><div class="layer">INTELLIGENCE</div><h3>FastAPI AI</h3><p>OCR/Vision, RAG, Semantic Search, LLM และ Cost Engine</p></div>
+      <div class="arch-node"><div class="layer">DECISION</div><h3>คำตอบผู้ใช้</h3><p>สิทธิ ค่าใช้จ่าย เครือข่าย เอกสาร และคำแนะนำถัดไป</p></div>
+    </div>
+    <div class="arch-storage"><div class="store"><b>MongoDB</b><span>Assessment<br>records</span></div><div class="store"><b>Vector Store</b><span>Policy & manual<br>embeddings</span></div><div class="store"><b>Policy data</b><span>Hospital, insurance<br>& eligibility datasets</span></div></div>
+    <div class="ops"><span>Docker / Kubernetes</span><span>Prometheus</span><span>Grafana</span><span>CI/CD</span></div>
+    <div class="footer-note">CARE PULSE • ENTERPRISE MICROSERVICES</div>
+  </section>
+
+  <section class="slide s9" data-page="9"><div class="topline"></div>
+    <div class="eyebrow">Trust & boundaries</div><h2>น่าเชื่อถือได้ เมื่อปกป้องข้อมูลและบอกขอบเขตชัดเจน</h2>
+    <div class="trust-grid">
+      <div class="trust-side"><h3>การปกป้องข้อมูล</h3>
+        <div class="trust-item"><i>✓</i><div><b>Consent first</b><span>เริ่มประเมินเมื่อผู้ใช้ยินยอม และขอข้อมูลเท่าที่จำเป็น</span></div></div>
+        <div class="trust-item"><i>✓</i><div><b>Masking อัตโนมัติ</b><span>เลขบัตรประชาชน ชื่อ และหมายเลขโทรศัพท์ถูกปิดบังในกระบวนการที่เกี่ยวข้อง</span></div></div>
+        <div class="trust-item"><i>✓</i><div><b>แยกบริการและติดตามสถานะ</b><span>ระบบมี metrics และ dashboard เพื่อเฝ้าระวังประสิทธิภาพและข้อผิดพลาด</span></div></div>
+      </div>
+      <div class="trust-side demo"><h3>ขอบเขตเวอร์ชันปัจจุบัน</h3>
+        <div class="trust-item"><i>!</i><div><b>Government gateway ยังเป็น mock</b><span>หน้าประเมินปัจจุบันจำลองการตรวจ NHSO, SSO, CGD และ OIC</span></div></div>
+        <div class="trust-item"><i>!</i><div><b>ผลเป็น decision support</b><span>ต้องยืนยันกับหน่วยงานเจ้าของสิทธิและสถานพยาบาลก่อนใช้จริง</span></div></div>
+        <div class="trust-item"><i>!</i><div><b>ข้อมูลนโยบายต้องมีรอบทบทวน</b><span>กฎและคู่มือต้องอัปเดตตามประกาศและแหล่งข้อมูลทางการ</span></div></div>
+      </div>
+    </div>
+    <div class="boundary">เป้าหมายก่อน production: เชื่อม API ทางการ • เพิ่ม audit trail • ตั้งรอบทบทวนนโยบาย • ทดสอบความถูกต้องกับผู้เชี่ยวชาญ</div>
+  </section>
+
+  <section class="slide s11" data-page="10"><div class="topline"></div>
+    <div class="title-wash"></div>
+    <h2>ทำไมต้อง <span class="accent">CarePulse AI?</span></h2>
+    <div class="thesis">เครื่องมือทั่วไปให้ข้อมูล<br>CarePulse พาไปถึงการใช้สิทธิ</div>
+    <img class="comparison-art" src="carepulse-comparison-visual.png" alt="ภาพเปรียบเทียบเครื่องมือทั่วไปกับ CarePulse AI" />
+    <div class="compare-label gpt"><b>GPT</b><span>ตอบทั่วไป</span></div>
+    <div class="compare-label google"><b>Google</b><span>ต้องค้นเอง</span></div>
+    <div class="compare-label gov"><b>แอปรัฐ</b><span>แยกหลายระบบ</span></div>
+    <div class="carepulse-label"><b>CarePulse AI</b><span>สิทธิ • เอกสาร • ค่าใช้จ่าย • ขั้นตอน</span></div>
+    <div class="footer-note">CARE PULSE • ONE HEALTHCARE NAVIGATOR</div>
+  </section>
+
+  <section class="slide s10" data-page="11">
+    <div class="brand"><span class="brand-mark"></span>CarePulse AI</div>
+    <h2>จากข้อมูลสิทธิที่ซับซ้อน<br>สู่คำตอบที่เข้าใจง่าย<br><span class="cyan">และลงมือทำต่อได้</span></h2>
+    <div class="summary-line"></div>
+    <div class="three">
+      <div class="close-item"><b>เข้าใจผู้ใช้</b><span>รวมสถานะสิทธิ สุขภาพ สถานที่ และเอกสารไว้ในบริบทเดียว</span></div>
+      <div class="close-item"><b>ตัดสินใจอย่างมีหลักฐาน</b><span>ใช้ Rules Engine + ข้อมูลโรงพยาบาล + RAG/AI แทนการพึ่งโมเดลเพียงอย่างเดียว</span></div>
+      <div class="close-item"><b>พาไปถึงขั้นตอนถัดไป</b><span>สรุปสิทธิ ค่าใช้จ่าย เอกสาร ช่องทางติดต่อ และข้อจำกัดอย่างตรงไปตรงมา</span></div>
+    </div>
+    <div class="closing">CARE PULSE • EXPLAINABLE HEALTHCARE NAVIGATION</div>
+  </section>
+
+<script>
+  const n = Math.max(1, Math.min(11, Number(new URLSearchParams(location.search).get('slide') || 1)));
+  document.querySelectorAll('.slide').forEach((el, i) => el.classList.toggle('active', i + 1 === n));
+</script>
+</body>
+</html>

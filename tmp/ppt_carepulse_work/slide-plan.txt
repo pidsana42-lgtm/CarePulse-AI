@@ -1,0 +1,12 @@
+Communication job: By the end, project stakeholders should understand how CarePulse turns user context, policy rules, hospital data, and AI into an actionable healthcare-rights result, including its current mock-integration boundary.
+
+1. Cover — value proposition
+2. Problem — fragmented rights information
+3. Journey — four-step citizen flow
+4. Inputs — personalized context
+5. Decision engine — rules, data, retrieval, explanation
+6. Outputs — rights, costs, providers, next actions
+7. AI and documents — OCR, structure, RAG, LLM
+8. Architecture — Next.js, Spring Boot, FastAPI, storage, monitoring
+9. Trust and boundaries — PDPA, consent, mock gateways, production next steps
+10. Close — synthesis

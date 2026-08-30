@@ -3,15 +3,11 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Building2,
   CheckCircle2,
   Database,
-  Hospital,
-  KeyRound,
   Loader2,
   LockKeyhole,
   Search,
-  ShieldCheck,
   UserRound,
 } from 'lucide-react';
 import { lookupMockRegistry } from '@/lib/api';
@@ -251,38 +247,6 @@ export default function AssessmentPage() {
                 </div>
                 <span className="block text-[11px] text-amber-700">ระบบสาธิตนี้ให้ใช้เลขตัวอย่างเท่านั้น ไม่ใช้เลขบัตรจริง</span>
               </label>
-
-              <section className="rounded-2xl border border-[#115af2]/20 bg-[#f7faff] p-4" aria-labelledby="nhso-api-title">
-                <div className="flex items-start gap-3">
-                  <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#e8f1ff] text-[#115af2]"><Building2 className="size-5" /></span>
-                  <div>
-                    <p className="text-xs font-semibold text-[#115af2]">สำหรับสถานพยาบาล</p>
-                    <h3 id="nhso-api-title" className="mt-0.5 text-sm font-bold text-[#072b77]">ผลตรวจสิทธิและยืนยันตัวตนจาก สปสช.</h3>
-                    <p className="mt-1 text-xs leading-relaxed text-[#424245]">เมื่อสถานพยาบาลส่งคำขอตรวจสิทธิและยืนยันตัวตน ผลตอบกลับจะช่วยลงทะเบียนผู้ป่วยและเตรียมการเบิกจ่ายได้</p>
-                  </div>
-                </div>
-
-                <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-xl bg-white p-3 shadow-sm">
-                    <ShieldCheck className="size-4 text-[#115af2]" />
-                    <h4 className="mt-2 text-xs font-bold text-[#1d1d1f]">1. สิทธิการรักษาหลัก</h4>
-                    <p className="mt-1 text-[11px] leading-relaxed text-[#6e6e73]">ประเภทสิทธิ สิทธิย่อย สถานะใช้งาน และช่วงวันที่มีสิทธิ</p>
-                  </div>
-                  <div className="rounded-xl bg-white p-3 shadow-sm">
-                    <Hospital className="size-4 text-[#115af2]" />
-                    <h4 className="mt-2 text-xs font-bold text-[#1d1d1f]">2. หน่วยบริการที่ผูกสิทธิ</h4>
-                    <p className="mt-1 text-[11px] leading-relaxed text-[#6e6e73]">หน่วยบริการประจำ ปฐมภูมิ และหน่วยบริการรับส่งต่อ</p>
-                  </div>
-                  <div className="rounded-xl bg-white p-3 shadow-sm">
-                    <KeyRound className="size-4 text-[#115af2]" />
-                    <h4 className="mt-2 text-xs font-bold text-[#1d1d1f]">3. ตัวตนและการยืนยัน</h4>
-                    <p className="mt-1 text-[11px] leading-relaxed text-[#6e6e73]">ข้อมูลผู้รับบริการ สถานะยืนยันตัวตน และรหัสอนุมัติสิทธิ</p>
-                  </div>
-                </div>
-
-                <p className="mt-3 text-[11px] leading-relaxed text-[#6e6e73]">CarePulse แสดงผลในรูปแบบสาธิตเท่านั้น การเชื่อมต่อ API จริงต้องดำเนินการโดยสถานพยาบาลที่ได้รับอนุญาตจาก สปสช.</p>
-                <a href="https://www.nhso.go.th/th/communicate-th/new/2024-10-30-15-39-50/11339-api" target="_blank" rel="noreferrer" className="mt-2 inline-flex text-[11px] font-semibold text-[#115af2] hover:underline">ดูข้อมูล API ของ สปสช.</a>
-              </section>
 
               <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-[#115af2]/20 bg-[#eef5ff] p-4">
                 <input

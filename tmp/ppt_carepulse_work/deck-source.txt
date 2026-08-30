@@ -1,0 +1,117 @@
+# {background-image="/Users/phonsirithabunsri/Desktop/Desktop/CarePulse-AI-/tmp/ppt_carepulse_work/rendered/slide-1.png"}
+
+::: notes
+[Sources]
+
+- README.md
+- frontend/app/assessment/page.tsx
+- frontend/app/results/page.tsx
+:::
+
+# {background-image="/Users/phonsirithabunsri/Desktop/Desktop/CarePulse-AI-/tmp/ppt_carepulse_work/rendered/slide-2.png"}
+
+::: notes
+[Sources]
+
+- README.md
+- frontend/app/assessment/page.tsx
+- frontend/app/results/page.tsx
+:::
+
+# {background-image="/Users/phonsirithabunsri/Desktop/Desktop/CarePulse-AI-/tmp/ppt_carepulse_work/rendered/slide-3.png"}
+
+::: notes
+[Sources]
+
+- frontend/app/assessment/page.tsx
+- frontend/app/results/page.tsx
+- frontend/lib/api.ts
+:::
+
+# {background-image="/Users/phonsirithabunsri/Desktop/Desktop/CarePulse-AI-/tmp/ppt_carepulse_work/rendered/slide-4.png"}
+
+::: notes
+[Sources]
+
+- frontend/app/assessment/page.tsx
+- frontend/lib/types.ts
+- backend/app/services/ocr_document.py
+:::
+
+# {background-image="/Users/phonsirithabunsri/Desktop/Desktop/CarePulse-AI-/tmp/ppt_carepulse_work/rendered/slide-5.png"}
+
+::: notes
+[Sources]
+
+- backend/app/services/eligibility_engine.py
+- backend/app/services/cost_engine.py
+- backend/app/services/rag_service.py
+- backend/app/services/llm_service.py
+:::
+
+# {background-image="/Users/phonsirithabunsri/Desktop/Desktop/CarePulse-AI-/tmp/ppt_carepulse_work/rendered/slide-6.png"}
+
+::: notes
+[Sources]
+
+- frontend/app/results/page.tsx
+- backend/app/services/eligibility_engine.py
+- backend/app/services/cost_engine.py
+:::
+
+# {background-image="/Users/phonsirithabunsri/Desktop/Desktop/CarePulse-AI-/tmp/ppt_carepulse_work/rendered/slide-7.png"}
+
+::: notes
+[Sources]
+
+- backend/app/services/ocr_document.py
+- backend/app/services/rag_service.py
+- backend/app/services/llm_service.py
+- backend/app/services/pdpa_masking.py
+:::
+
+# {background-image="/Users/phonsirithabunsri/Desktop/Desktop/CarePulse-AI-/tmp/ppt_carepulse_work/rendered/slide-8.png"}
+
+::: notes
+[Sources]
+
+- README.md
+- docker-compose.yml
+- backend/app/main.py
+- springboot-service/pom.xml
+:::
+
+# {background-image="/Users/phonsirithabunsri/Desktop/Desktop/CarePulse-AI-/tmp/ppt_carepulse_work/rendered/slide-9.png"}
+
+::: notes
+[Sources]
+
+- frontend/app/assessment/page.tsx
+- backend/app/services/pdpa_masking.py
+- backend/app/services/eligibility_engine.py
+- README.md
+:::
+
+# {background-image="/Users/phonsirithabunsri/Desktop/Desktop/CarePulse-AI-/tmp/ppt_carepulse_work/rendered/slide-10.png"}
+
+::: notes
+[Sources]
+
+- README.md
+- frontend/app/assessment/page.tsx
+- frontend/app/results/page.tsx
+- Visual generated for this deck with OpenAI ImageGen; no external asset used.
+:::
+
+# {background-image="/Users/phonsirithabunsri/Desktop/Desktop/CarePulse-AI-/tmp/ppt_carepulse_work/rendered/slide-11.png"}
+
+::: notes
+[Sources]
+
+- README.md
+- frontend/app/assessment/page.tsx
+- frontend/app/results/page.tsx
+- backend/app/services/eligibility_engine.py
+- backend/app/services/cost_engine.py
+- backend/app/services/rag_service.py
+:::

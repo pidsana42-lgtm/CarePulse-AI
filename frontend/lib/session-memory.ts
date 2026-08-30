@@ -1,4 +1,5 @@
 import type { AssessmentResult, DocumentScanResult } from '@/types';
+import { getVerifiedDocumentBenefits } from '@/lib/document-rights';
 
 const SESSION_KEY = 'carepulse_session_memory_v1';
 const LEGACY_ASSESSMENT_KEY = 'latest_assessment_result';
@@ -10,6 +11,7 @@ interface SessionDocumentInsight {
   uploadedAt: string;
   ocrConfidence: number;
   clinicalSummary?: string;
+  reviewedText?: string;
   matchedEquipment: Array<{ item: string; agency: string; cost_saved?: string }>;
   eligibleSchemes: Array<{ scheme: string; agency: string; benefit?: string; contact?: string }>;
 }
@@ -92,8 +94,11 @@ export function getSessionLocation(): SessionLocation | null {
   return readMemory().location ?? null;
 }
 
-export function rememberDocumentInsight(result: DocumentScanResult, fileName: string) {
+export function rememberDocumentInsight(result: DocumentScanResult, fileName: string, assessment?: AssessmentResult | null) {
   const extracted = result.extracted_data ?? {};
+  const verifiedBenefits = assessment
+    ? getVerifiedDocumentBenefits(assessment, [extracted])
+    : null;
   const insight: SessionDocumentInsight = {
     id: result.document_id,
     fileName,
@@ -101,12 +106,21 @@ export function rememberDocumentInsight(result: DocumentScanResult, fileName: st
     uploadedAt: result.uploaded_at,
     ocrConfidence: result.ocr_confidence,
     clinicalSummary: typeof extracted.ai_clinical_summary === 'string' ? extracted.ai_clinical_summary : undefined,
-    matchedEquipment: Array.isArray(extracted.matched_equipment) ? extracted.matched_equipment : [],
-    eligibleSchemes: Array.isArray(extracted.eligible_schemes) ? extracted.eligible_schemes : [],
+    reviewedText: typeof extracted.ocr_raw_text === 'string' ? extracted.ocr_raw_text : undefined,
+    matchedEquipment: verifiedBenefits?.equipment ?? [],
+    eligibleSchemes: verifiedBenefits?.schemes ?? [],
   };
   const memory = readMemory();
   const documentInsights = [...memory.documentInsights.filter((item) => item.id !== insight.id), insight].slice(-20);
   writeMemory({ ...memory, documentInsights });
+}
+
+export function forgetDocumentInsight(documentId: string) {
+  const memory = readMemory();
+  writeMemory({
+    ...memory,
+    documentInsights: memory.documentInsights.filter((item) => item.id !== documentId),
+  });
 }
 
 export function hasCarePulseSession() {
@@ -140,6 +154,7 @@ export function getAiSessionContext(includeFullAssessment: boolean = false): str
     const parts = [
       `เอกสาร ${document.fileName} (${document.documentType}, ความมั่นใจในการอ่านข้อความ ${Math.round(document.ocrConfidence * 100)}%)`,
       document.clinicalSummary ? `สรุป: ${document.clinicalSummary}` : '',
+      document.reviewedText ? `ข้อความที่ผู้ใช้ตรวจทานแล้ว: ${document.reviewedText}` : '',
       document.matchedEquipment.length ? `อุปกรณ์ที่อาจเข้าเงื่อนไข: ${document.matchedEquipment.map((item) => `${item.item} — ${item.agency}`).join(', ')}` : '',
       document.eligibleSchemes.length ? `สิทธิเสริมที่อาจเกี่ยวข้อง: ${document.eligibleSchemes.map((item) => `${item.scheme} — ${item.agency}`).join(', ')}` : '',
     ].filter(Boolean);

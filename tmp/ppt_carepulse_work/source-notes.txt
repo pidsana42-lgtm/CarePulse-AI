@@ -1,0 +1,25 @@
+CarePulse PowerPoint — source and asset provenance
+
+All visible claims and visual concepts are derived from local project files. No external visual assets were used.
+
+Core product and architecture
+- /Users/phonsirithabunsri/Desktop/Desktop/CarePulse-AI-/README.md
+- /Users/phonsirithabunsri/Desktop/Desktop/CarePulse-AI-/docker-compose.yml
+- /Users/phonsirithabunsri/Desktop/Desktop/CarePulse-AI-/monitoring/prometheus/prometheus.yml
+- /Users/phonsirithabunsri/Desktop/Desktop/CarePulse-AI-/monitoring/grafana/dashboards/carepulse-dashboard.json
+
+User journey and current demo boundary
+- /Users/phonsirithabunsri/Desktop/Desktop/CarePulse-AI-/frontend/app/assessment/page.tsx
+- /Users/phonsirithabunsri/Desktop/Desktop/CarePulse-AI-/frontend/app/results/page.tsx
+- /Users/phonsirithabunsri/Desktop/Desktop/CarePulse-AI-/frontend/lib/mock-eligibility.ts
+- /Users/phonsirithabunsri/Desktop/Desktop/CarePulse-AI-/frontend/lib/session-memory.ts
+
+Eligibility, costs, AI, OCR, and privacy
+- /Users/phonsirithabunsri/Desktop/Desktop/CarePulse-AI-/backend/app/services/eligibility_engine.py
+- /Users/phonsirithabunsri/Desktop/Desktop/CarePulse-AI-/backend/app/services/cost_engine.py
+- /Users/phonsirithabunsri/Desktop/Desktop/CarePulse-AI-/backend/app/services/rag_service.py
+- /Users/phonsirithabunsri/Desktop/Desktop/CarePulse-AI-/backend/app/services/llm_service.py
+- /Users/phonsirithabunsri/Desktop/Desktop/CarePulse-AI-/backend/app/api/v1/endpoints/ocr_document.py
+- /Users/phonsirithabunsri/Desktop/Desktop/CarePulse-AI-/backend/app/core/pdpa_masking.py
+
+Speaker notes should use [Sources] blocks with these paths, grouped by slide relevance.

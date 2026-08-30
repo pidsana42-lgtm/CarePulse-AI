@@ -1,0 +1,79 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    html, body { margin: 0; width: 1672px; height: 941px; overflow: hidden; background: transparent; }
+    canvas { display: block; width: 1672px; height: 941px; }
+  </style>
+</head>
+<body>
+<canvas id="out" width="1672" height="941"></canvas>
+<script>
+const img = new Image();
+img.src = 'background-extraction-source.png';
+img.onload = () => {
+  const canvas = document.getElementById('out');
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  const frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const px = frame.data;
+  const w = canvas.width;
+  const h = canvas.height;
+  const count = w * h;
+  const candidate = new Uint8Array(count);
+  const background = new Uint8Array(count);
+
+  // The generated intermediate uses a neutral gray checkerboard. Mark only
+  // near-neutral, very bright pixels as removable candidates.
+  for (let i = 0, p = 0; i < count; i++, p += 4) {
+    const r = px[p], g = px[p + 1], b = px[p + 2];
+    const hi = Math.max(r, g, b);
+    const lo = Math.min(r, g, b);
+    if (lo >= 228 && hi - lo <= 15) candidate[i] = 1;
+  }
+
+  // Remove only candidate pixels connected to the canvas edge. This preserves
+  // bright details enclosed inside the illustrated objects.
+  const queue = new Int32Array(count);
+  let head = 0, tail = 0;
+  const add = i => {
+    if (candidate[i] && !background[i]) {
+      background[i] = 1;
+      queue[tail++] = i;
+    }
+  };
+  for (let x = 0; x < w; x++) { add(x); add((h - 1) * w + x); }
+  for (let y = 0; y < h; y++) { add(y * w); add(y * w + w - 1); }
+  while (head < tail) {
+    const i = queue[head++];
+    const x = i % w;
+    if (x > 0) add(i - 1);
+    if (x + 1 < w) add(i + 1);
+    if (i >= w) add(i - w);
+    if (i + w < count) add(i + w);
+  }
+
+  // Genuine alpha background; retain a one-pixel antialiased transition.
+  for (let i = 0, p = 0; i < count; i++, p += 4) {
+    if (background[i]) {
+      px[p + 3] = 0;
+      continue;
+    }
+    const x = i % w;
+    let edge = false;
+    if (x > 0 && background[i - 1]) edge = true;
+    if (x + 1 < w && background[i + 1]) edge = true;
+    if (i >= w && background[i - w]) edge = true;
+    if (i + w < count && background[i + w]) edge = true;
+    if (edge) px[p + 3] = 210;
+  }
+  ctx.clearRect(0, 0, w, h);
+  ctx.putImageData(frame, 0, 0);
+  ctx.fillStyle = '#ff00ff';
+  ctx.fillRect(0, 0, 100, 100);
+  document.documentElement.dataset.ready = 'true';
+};
+</script>
+</body>
+</html>

@@ -7,8 +7,8 @@ import { clearCarePulseSession, hasCarePulseSession } from '@/lib/session-memory
 
 const NAV_LINKS = [
   { href: '/assessment', label: 'ตรวจสิทธิ' },
-  { href: '/estimate', label: 'ประเมินค่ารักษา' },
-  { href: '/scan', label: 'อ่านเอกสารแพทย์' },
+  //{ href: '/estimate', label: 'ประเมินค่ารักษา' },
+  //{ href: '/scan', label: 'อ่านเอกสารแพทย์' },
   { href: '/search', label: 'CarePulse AI' },
 ];
 

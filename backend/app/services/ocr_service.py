@@ -1,7 +1,7 @@
 import uuid
 import logging
 from datetime import datetime
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from app.core.pdpa_masking import pdpa_masker
 from app.models.document import DocumentUploadResponse
 from app.services.ai_medical_reader import ai_medical_reader
@@ -16,12 +16,22 @@ class DocumentOCRService:
     """
 
     @staticmethod
-    async def process_document(filename: str, file_bytes: bytes, doc_type: str) -> DocumentUploadResponse:
+    async def process_document(
+        filename: str,
+        file_bytes: bytes,
+        doc_type: str,
+        corrected_text: Optional[str] = None,
+    ) -> DocumentUploadResponse:
         logger.info(f"Processing document {filename} ({len(file_bytes)} bytes) as {doc_type} with AI Analyzer")
 
         # If it's a medical certificate, referral letter, or health record, use AI Medical Reader
         if doc_type in ["medical_certificate", "referral_letter", "health_record", "other"]:
-            ai_result = await ai_medical_reader.analyze_medical_document(filename, file_bytes, doc_type)
+            ai_result = await ai_medical_reader.analyze_medical_document(
+                filename,
+                file_bytes,
+                doc_type,
+                corrected_text=corrected_text,
+            )
             return DocumentUploadResponse(**ai_result)
 
         # Standard document fallback

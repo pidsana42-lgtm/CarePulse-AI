@@ -67,6 +67,29 @@ export async function uploadDocument(file: File, documentType: string = 'id_card
   return await response.json();
 }
 
+export async function reviewDocumentText(
+  filename: string,
+  documentType: string,
+  correctedText: string,
+): Promise<DocumentScanResult> {
+  const response = await fetch(`${API_BASE_URL}/documents/review`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      filename,
+      document_type: documentType,
+      corrected_text: correctedText,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text().catch(() => '');
+    throw new Error(`การวิเคราะห์ข้อความที่แก้ไขล้มเหลว (${response.status}): ${errorBody}`);
+  }
+
+  return await response.json();
+}
+
 export interface SearchResultItem {
   title: string;
   snippet: string;
