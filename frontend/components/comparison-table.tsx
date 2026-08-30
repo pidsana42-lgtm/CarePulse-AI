@@ -59,7 +59,7 @@ const rows: {
 function Cell({ value }: { value: string | boolean }) {
   if (value === true) {
     return (
-      <span className="liquid-glass-pill size-7 inline-flex items-center justify-center text-emerald-600 bg-emerald-100/80 shadow-xs">
+      <span className="liquid-glass-pill size-7 inline-flex items-center justify-center text-cyan-600 bg-cyan-100/80 shadow-xs">
         <Check className="size-4" aria-hidden="true" />
         <span className="sr-only">ได้</span>
       </span>
@@ -81,9 +81,9 @@ export function ComparisonTable() {
     <section id="compare" className="scroll-mt-20 py-20 relative overflow-hidden">
       <div className="mx-auto w-full max-w-5xl px-4 sm:px-6 space-y-10">
         <div className="flex flex-col items-center gap-3 text-center">
-          <div className="liquid-glass-pill px-4 py-1 text-xs font-black text-emerald-900 inline-flex items-center gap-1.5 shadow-xs">
-            <Sparkles className="size-3.5 text-emerald-600" />
-            Core Welfare Comparison Matrix
+          <div className="liquid-glass-pill px-4 py-1 text-xs font-black text-cyan-900 inline-flex items-center gap-1.5 shadow-xs">
+            <Sparkles className="size-3.5 text-cyan-600" />
+            ตารางเปรียบเทียบสิทธิสุขภาพหลัก
           </div>
           <h2 className="text-3xl sm:text-5xl font-black tracking-tight text-slate-950">
             เปรียบเทียบ 3 สิทธิหลักของคนไทย
@@ -103,14 +103,14 @@ export function ComparisonTable() {
                 <th scope="col" className="p-4 sm:p-5 text-sm font-black text-slate-900">
                   สิทธิประโยชน์
                 </th>
-                <th scope="col" className="p-4 sm:p-5 text-center text-sm font-black text-emerald-800">
+                <th scope="col" className="p-4 sm:p-5 text-center text-sm font-black text-cyan-800">
                   บัตรทอง (สปสช.)
                 </th>
-                <th scope="col" className="p-4 sm:p-5 text-center text-sm font-black text-blue-800">
+                <th scope="col" className="p-4 sm:p-5 text-center text-sm font-black text-cyan-800">
                   ประกันสังคม
                 </th>
                 <th scope="col" className="p-4 sm:p-5 text-center text-sm font-black text-slate-900">
-                  ข้าราชการ (CSMBS)
+                  สวัสดิการข้าราชการ
                 </th>
               </tr>
             </thead>

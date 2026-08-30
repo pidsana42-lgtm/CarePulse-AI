@@ -16,6 +16,7 @@ class ChatRequest(BaseModel):
     temperature: Optional[float] = 0.6
     max_tokens: Optional[int] = 512
     use_rag: Optional[bool] = True
+    use_web_search: Optional[bool] = True
 
 class ChatResponse(BaseModel):
     content: str
@@ -42,7 +43,8 @@ async def chat_with_ai_advisor(request: ChatRequest):
             messages=messages_dict,
             temperature=request.temperature or 0.6,
             max_tokens=request.max_tokens or 512,
-            use_rag=request.use_rag if request.use_rag is not None else True
+            use_rag=request.use_rag if request.use_rag is not None else True,
+            use_web_search=request.use_web_search if request.use_web_search is not None else True,
         )
         return ChatResponse(**result)
     except Exception as e:
@@ -58,7 +60,8 @@ async def stream_chat_with_ai_advisor(request: ChatRequest):
         messages=messages_dict,
         temperature=request.temperature or 0.6,
         max_tokens=request.max_tokens or 512,
-        use_rag=request.use_rag if request.use_rag is not None else True
+        use_rag=request.use_rag if request.use_rag is not None else True,
+        use_web_search=request.use_web_search if request.use_web_search is not None else True,
     )
     return StreamingResponse(generator, media_type="text/event-stream")
 

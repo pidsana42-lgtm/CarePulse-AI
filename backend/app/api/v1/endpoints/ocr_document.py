@@ -17,11 +17,11 @@ async def scan_and_extract_document(
     Performs OCR and instant PDPA masking.
     """
     if not file.content_type.startswith("image/") and not file.filename.endswith((".pdf", ".png", ".jpg", ".jpeg")):
-        raise HTTPException(status_code=400, detail="Invalid file format. Please upload an image or PDF.")
+        raise HTTPException(status_code=400, detail="รูปแบบไฟล์ไม่ถูกต้อง กรุณาอัปโหลดรูปภาพหรือเอกสารพีดีเอฟ")
 
     contents = await file.read()
     if len(contents) > 10 * 1024 * 1024:  # 10MB limit
-        raise HTTPException(status_code=400, detail="File too large. Maximum size is 10MB.")
+        raise HTTPException(status_code=400, detail="ไฟล์มีขนาดใหญ่เกินไป รองรับสูงสุด 10 เมกะไบต์")
 
     result = await ocr_service.process_document(
         filename=file.filename,

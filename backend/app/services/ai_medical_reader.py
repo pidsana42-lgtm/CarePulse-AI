@@ -67,7 +67,7 @@ class AIMedicalCertificateReader:
             "คุณคือผู้เชี่ยวชาญด้านสิทธิการรักษาพยาบาลและสวัสดิการสังคมของไทย "
             "กรุณาอ่านและวิเคราะห์ใบรับรองแพทย์/เอกสารทางการแพทย์ในภาพนี้ แล้วตอบใน 4 หัวข้อ:\n\n"
             "1. **สถานพยาบาลและข้อมูลเบื้องต้น** (ชื่อโรงพยาบาล, วันที่, ชื่อแพทย์)\n"
-            "2. **การวินิจฉัยทางการแพทย์และภาวะพึ่งพิง** (ระบุโรค, ภาวะติดเตียง/ช่วยเหลือตัวเองไม่ได้/กลั้นไม่อยู่, คะแนน ADL ถ้ามี)\n"
+            "2. **การวินิจฉัยทางการแพทย์และภาวะพึ่งพิง** (ระบุโรค ภาวะติดเตียง ช่วยเหลือตัวเองไม่ได้ ภาวะกลั้นไม่อยู่ และคะแนนประเมินกิจวัตรประจำวันถ้ามี)\n"
             "3. **กายอุปกรณ์และสวัสดิการที่เข้าข่ายเบิกได้ฟรี** (เตียงปรับระดับ พม., รถเข็น, ผ้าอ้อมผู้ใหญ่ กปท. ≤3 ชิ้น/วัน, เครื่องผลิตออกซิเจน)\n"
             "4. **ระเบียบราชการอ้างอิงและขั้นตอนติดต่อ** (สปสช. 1330, พม. 1300, รพ.สต., อบต./เทศบาล)"
         )
@@ -104,7 +104,7 @@ class AIMedicalCertificateReader:
                 raise Exception(f"HTTP {_resp.status_code}")
         except Exception as e:
             logger.info(f"Gemma-4 Vision offline/cold ({e}), instant clinical reasoning from OCR text")
-            vision_analysis = f"วิเคราะห์จากข้อความเอกสาร (Real OCR Thai+Eng): {raw_text[:200]}"
+            vision_analysis = f"วิเคราะห์จากข้อความที่ระบบอ่านได้จากเอกสารภาษาไทยและภาษาอังกฤษ: {raw_text[:200]}"
 
 
         # 4. Parse Image Metadata
@@ -139,7 +139,7 @@ class AIMedicalCertificateReader:
         # Detect ADL score
         adl_match = re.search(r"(adl|คะแนน\s*adl)[\s:=]*([0-9]+)", combined_corpus)
         if adl_match:
-            adl_score_found = f"คะแนน ADL: {adl_match.group(2)}/20"
+            adl_score_found = f"คะแนนประเมินกิจวัตรประจำวัน: {adl_match.group(2)}/20"
 
         if any(k in combined_corpus for k in ["ติดเตียง", "ติดบ้าน", "bedridden", "adl", "อัมพฤกษ์", "อัมพาต", "stroke", "paralysis", "หลอดเลือดสมอง"]):
             detected_conditions.append("ภาวะพึ่งพิง / ผู้ป่วยติดบ้าน-ติดเตียง หรือโรคหลอดเลือดสมอง (Stroke)")
@@ -239,9 +239,9 @@ class AIMedicalCertificateReader:
             })
 
         eligible_schemes.append({
-            "scheme": "สิทธิการดูแลระยะยาว Long-Term Care (LTC) และ Caregiver เยี่ยมบ้าน",
+            "scheme": "สิทธิการดูแลระยะยาวสำหรับผู้มีภาวะพึ่งพิงและผู้ช่วยดูแลเยี่ยมบ้าน",
             "agency": "กองทุนสุขภาพตำบล / รพ.สต.",
-            "benefit": "มีผู้จัดการดูแล (Care Manager) และจิตอาสา Caregiver ลงพื้นที่ตรวจสุขภาพและทำกายภาพที่บ้านฟรี",
+            "benefit": "มีผู้จัดการดูแลและผู้ช่วยดูแลลงพื้นที่ตรวจสุขภาพและทำกายภาพที่บ้านโดยไม่มีค่าใช้จ่าย",
             "contact": "รพ.สต. หรือ ศูนย์บริการสาธารณสุขใกล้บ้าน"
         })
 
@@ -253,7 +253,7 @@ class AIMedicalCertificateReader:
         else:
             cond_text = ", ".join(detected_conditions)
             ai_clinical_summary = (
-                f"จากการอ่านและวิเคราะห์เอกสาร ({filename}) โดย Gemma-4 AI & OCR:\n"
+                f"จากการอ่านและวิเคราะห์เอกสาร ({filename}) โดยระบบปัญญาประดิษฐ์ Gemma-4 และระบบอ่านข้อความจากภาพ:\n"
                 f"• **สถานพยาบาลที่ตรวจพบ**: {detected_hospital}\n"
                 f"• **การวินิจฉัยและสภาวะทางการแพทย์**: {cond_text}\n"
                 f"• **สิทธิประโยชน์และกายอุปกรณ์ที่สอดคล้อง**: เข้าข่ายผู้มีสิทธิขอรับกายอุปกรณ์จาก **สปสช.** และ **กระทรวง พม.**\n"
@@ -275,7 +275,7 @@ class AIMedicalCertificateReader:
                 "url": "https://dep.go.th"
             },
             {
-                "title": "คู่มือแนวทางการจัดบริการดูแลระยะยาวด้านสาธารณสุขสำหรับผู้สูงอายุที่มีภาวะพึ่งพิง (LTC)",
+                "title": "คู่มือแนวทางการจัดบริการดูแลระยะยาวด้านสาธารณสุขสำหรับผู้สูงอายุที่มีภาวะพึ่งพิง",
                 "legal_act": "ระเบียบสำนักงานหลักประกันสุขภาพแห่งชาติว่าด้วยการดูแลผู้มีภาวะพึ่งพิง",
                 "agency": "สำนักงานหลักประกันสุขภาพแห่งชาติ (สปสช.)",
                 "url": "https://www.nhso.go.th"
@@ -288,7 +288,7 @@ class AIMedicalCertificateReader:
             "file_size": len(file_bytes),
             "resolution": image_dims,
             "document_type": doc_type,
-            "ai_model": "Gemma-4 Multimodal Clinical Vision & Reasoning Engine",
+            "ai_model": "Gemma-4 ระบบวิเคราะห์ภาพและเหตุผลทางการแพทย์",
             "ocr_engine": ocr_engine,
             "ocr_raw_text": raw_text if raw_text else "อ่านข้อมูลภาพเรียบร้อยแล้ว (ไม่พบตัวอักษรพิมพ์ชัดเจน)",
             "detected_hospital": detected_hospital,

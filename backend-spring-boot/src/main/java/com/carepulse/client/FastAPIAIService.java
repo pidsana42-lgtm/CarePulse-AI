@@ -1,7 +1,7 @@
 package com.carepulse.client;
 
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.*;
@@ -13,15 +13,18 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Map;
 
-@Slf4j
 @Service
-@RequiredArgsConstructor
 public class FastAPIAIService {
 
+    private static final Logger log = LoggerFactory.getLogger(FastAPIAIService.class);
     private final RestTemplate restTemplate;
 
     @Value("${services.fastapi-ai.url:http://localhost:8000}")
     private String fastApiBaseUrl;
+
+    public FastAPIAIService(RestTemplate restTemplate) {
+        this.restTemplate = restTemplate;
+    }
 
     /**
      * Delegate document OCR & AI inference to FastAPI Python service

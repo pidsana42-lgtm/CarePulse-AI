@@ -1,87 +1,121 @@
 'use client';
 
-import React, { useRef, useState } from 'react';
-import { Camera, Image as ImageIcon, CheckCircle, RefreshCw, Upload } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Camera, FileImage, Images, Plus, RefreshCw, Trash2 } from 'lucide-react';
+
+interface SelectedDocument {
+  id: string;
+  file: File;
+  previewUrl: string | null;
+}
 
 interface CameraCaptureProps {
-  onImageCaptured: (file: File, previewUrl: string) => void;
+  onImagesCaptured: (files: File[]) => void;
+  onReset?: () => void;
   isLoading?: boolean;
 }
 
-export default function CameraCapture({ onImageCaptured, isLoading = false }: CameraCaptureProps) {
-  const [preview, setPreview] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+export default function CameraCapture({ onImagesCaptured, onReset, isLoading = false }: CameraCaptureProps) {
+  const [documents, setDocuments] = useState<SelectedDocument[]>([]);
+  const documentsRef = useRef<SelectedDocument[]>([]);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      const objectUrl = URL.createObjectURL(file);
-      setPreview(objectUrl);
-      onImageCaptured(file, objectUrl);
-    }
+  useEffect(() => {
+    documentsRef.current = documents;
+  }, [documents]);
+
+  useEffect(() => () => {
+    documentsRef.current.forEach((document) => {
+      if (document.previewUrl) URL.revokeObjectURL(document.previewUrl);
+    });
+  }, []);
+
+  const addFiles = (fileList: FileList | null) => {
+    if (!fileList?.length) return;
+    const files = Array.from(fileList).slice(0, Math.max(0, 10 - documents.length));
+    const nextDocuments = files.map((file, index) => ({
+      id: `${file.name}-${file.lastModified}-${index}-${crypto.randomUUID()}`,
+      file,
+      previewUrl: file.type.startsWith('image/') ? URL.createObjectURL(file) : null,
+    }));
+    setDocuments((current) => [...current, ...nextDocuments].slice(0, 10));
+    onImagesCaptured(files);
+    if (cameraInputRef.current) cameraInputRef.current.value = '';
+    if (galleryInputRef.current) galleryInputRef.current.value = '';
   };
 
-  const handleRetake = () => {
-    setPreview(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-      fileInputRef.current.click();
-    }
+  const clearAll = () => {
+    documents.forEach((document) => {
+      if (document.previewUrl) URL.revokeObjectURL(document.previewUrl);
+    });
+    setDocuments([]);
+    onReset?.();
   };
 
   return (
     <div className="w-full">
-      {/* Hidden file input supporting mobile camera direct snap */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        onChange={handleFileChange}
-        className="hidden"
-        id="camera-input"
-      />
+      <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={(event) => addFiles(event.target.files)} className="hidden" />
+      <input ref={galleryInputRef} type="file" accept="image/*,.pdf" multiple onChange={(event) => addFiles(event.target.files)} className="hidden" />
 
-      {!preview ? (
-        <div
-          onClick={() => fileInputRef.current?.click()}
-          className="border-2 border-dashed border-emerald-300 hover:border-emerald-500 bg-emerald-50/50 hover:bg-emerald-50 rounded-2xl p-8 sm:p-12 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-4"
-        >
-          <div className="w-20 h-20 bg-emerald-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/20 transform group-hover:scale-105 transition-transform">
-            <Camera className="w-10 h-10" />
+      {documents.length === 0 ? (
+        <div className="flex flex-col items-center justify-center gap-6 py-8 text-center sm:py-12">
+          <div className="flex size-20 items-center justify-center rounded-full bg-[#115af2] text-white">
+            <Images className="size-9" />
           </div>
           <div>
-            <h3 className="text-xl sm:text-2xl font-bold text-slate-800">แตะที่นี่เพื่อ "ถ่ายรูปเอกสาร"</h3>
-            <p className="text-slate-600 mt-1 text-base">หรือเลือกรูปภาพจากคลังภาพบนโทรศัพท์ของท่าน</p>
+            <h3 className="text-xl font-semibold text-[#1d1d1f] sm:text-2xl">แนบเอกสารได้หลายใบ</h3>
+            <p className="mt-1 text-sm text-[#6e6e73] sm:text-base">สูงสุด 10 ไฟล์ รองรับรูปภาพและเอกสารพีดีเอฟ ไฟล์ละไม่เกิน 10 เมกะไบต์</p>
+          </div>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <button type="button" onClick={() => cameraInputRef.current?.click()} className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[#115af2] px-5 text-sm font-semibold text-white hover:bg-[#1a7bf0]">
+              <Camera className="size-4" /> ถ่ายรูปเอกสาร
+            </button>
+            <button type="button" onClick={() => galleryInputRef.current?.click()} className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-black/[0.12] bg-white px-5 text-sm font-semibold text-[#1d1d1f] hover:bg-[#f5f5f7]">
+              <Images className="size-4" /> เลือกหลายไฟล์
+            </button>
           </div>
         </div>
       ) : (
-        <div className="space-y-4">
-          <div className="relative rounded-2xl overflow-hidden border-2 border-emerald-500 shadow-md bg-black max-h-[400px] flex items-center justify-center">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={preview}
-              alt="รูปเอกสารที่ถ่าย"
-              className="max-h-[400px] w-auto object-contain"
-            />
-            {isLoading && (
-              <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center text-white gap-3">
-                <RefreshCw className="w-10 h-10 animate-spin text-emerald-400" />
-                <p className="font-semibold text-lg">กำลังอ่านข้อมูลและเซนเซอร์ข้อมูลส่วนบุคคล (PDPA)...</p>
-              </div>
-            )}
+        <div className="space-y-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="text-lg font-semibold text-[#1d1d1f]">เอกสารที่เลือก {documents.length} ใบ</h3>
+              <p className="text-xs text-[#6e6e73]">AI จะอ่านทีละใบและรวมผลให้โดยอัตโนมัติ</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" disabled={isLoading || documents.length >= 10} onClick={() => cameraInputRef.current?.click()} className="inline-flex h-9 items-center gap-2 rounded-full border border-black/[0.12] bg-white px-4 text-xs font-semibold text-[#1d1d1f] disabled:opacity-40">
+                <Camera className="size-3.5" /> ถ่ายเพิ่ม
+              </button>
+              <button type="button" disabled={isLoading || documents.length >= 10} onClick={() => galleryInputRef.current?.click()} className="inline-flex h-9 items-center gap-2 rounded-full bg-[#115af2] px-4 text-xs font-semibold text-white disabled:opacity-40">
+                <Plus className="size-3.5" /> เพิ่มหลายไฟล์
+              </button>
+            </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3">
-            <button
-              onClick={handleRetake}
-              disabled={isLoading}
-              className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl font-bold text-base transition-colors"
-            >
-              <RefreshCw className="w-5 h-5" />
-              <span>ถ่ายใหม่ / เลือกรูปใหม่</span>
-            </button>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            {documents.map((document, index) => (
+              <article key={document.id} className="relative overflow-hidden rounded-2xl border border-black/[0.08] bg-white">
+                <div className="aspect-[4/3] bg-[#f5f5f7]">
+                  {document.previewUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={document.previewUrl} alt={`เอกสารใบที่ ${index + 1}`} className="size-full object-cover" />
+                  ) : (
+                    <div className="flex size-full items-center justify-center text-[#115af2]"><FileImage className="size-8" /></div>
+                  )}
+                </div>
+                <div className="p-3">
+                  <p className="truncate text-xs font-semibold text-[#1d1d1f]">{index + 1}. {document.file.name}</p>
+                  <p className="mt-0.5 text-[10px] text-[#86868b]">{(document.file.size / 1024 / 1024).toFixed(1)} เมกะไบต์</p>
+                </div>
+                {isLoading && <div className="absolute inset-0 flex items-center justify-center bg-[#072b77]/80 text-white"><RefreshCw className="size-6 animate-spin" /></div>}
+              </article>
+            ))}
           </div>
+
+          <button type="button" onClick={clearAll} disabled={isLoading} className="inline-flex items-center gap-2 text-xs font-semibold text-rose-600 hover:underline disabled:opacity-40">
+            <Trash2 className="size-3.5" /> ล้างเอกสารทั้งหมด
+          </button>
         </div>
       )}
     </div>

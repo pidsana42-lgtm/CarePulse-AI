@@ -32,7 +32,7 @@ export function WebSearchSection() {
             มีคำถาม ถาม AI เลย
           </h2>
           <p className="text-slate-500 text-sm sm:text-base font-normal max-w-xl mx-auto">
-            AI ค้นหาจากเว็บไซต์ทางการแบบ Real-time พร้อมอ้างอิงแหล่งข้อมูลจริงทุกครั้ง
+            AI ค้นหาข้อมูลล่าสุดจากเว็บไซต์ทางการ พร้อมอ้างอิงแหล่งข้อมูลจริงทุกครั้ง
           </p>
         </div>
 
@@ -44,7 +44,7 @@ export function WebSearchSection() {
           }}
           className="liquid-glass rounded-[32px] p-2.5 sm:p-3 flex items-center gap-2.5 shadow-2xl border border-white/90"
         >
-          <div className="size-10 rounded-2xl bg-gradient-to-tr from-emerald-500 via-teal-500 to-emerald-700 flex items-center justify-center text-white shrink-0 shadow-md">
+          <div className="size-10 rounded-2xl bg-gradient-to-tr from-cyan-500 via-cyan-500 to-cyan-700 flex items-center justify-center text-white shrink-0 shadow-md">
             <Bot className="w-5 h-5" />
           </div>
           <input
@@ -77,7 +77,7 @@ export function WebSearchSection() {
                 className="liquid-glass-card rounded-[22px] p-4 text-left flex items-start justify-between gap-2.5 text-xs sm:text-sm text-slate-800 font-bold group cursor-pointer"
               >
                 <span>{q}</span>
-                <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-emerald-600 shrink-0 mt-0.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-cyan-600 shrink-0 mt-0.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
               </button>
             ))}
           </div>

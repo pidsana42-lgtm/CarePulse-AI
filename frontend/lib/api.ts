@@ -1,6 +1,36 @@
-import { AssessmentInput, AssessmentResult, DocumentScanResult } from '@/types';
+import {
+  AssessmentInput,
+  AssessmentResult,
+  DocumentScanResult,
+  MockRegistryResponse,
+} from '@/types';
+import { getAiSessionContext } from '@/lib/session-memory';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+
+export async function lookupMockRegistry(input: AssessmentInput): Promise<MockRegistryResponse> {
+  const response = await fetch(`${API_BASE_URL}/eligibility/registry/mock-lookup`, {
+    method: 'POST',
+    cache: 'no-store',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      citizen_id: input.citizen_id,
+      full_name: input.full_name,
+      birth_date: input.birth_date || null,
+      registered_province: input.registered_province,
+      consent: input.consent_to_assess,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text().catch(() => '');
+    throw new Error(`ค้นทะเบียนสิทธิจำลองไม่สำเร็จ (${response.status}): ${errorBody}`);
+  }
+
+  return await response.json();
+}
 
 export async function submitAssessment(input: AssessmentInput): Promise<AssessmentResult> {
   const response = await fetch(`${API_BASE_URL}/eligibility/assess`, {
@@ -89,9 +119,16 @@ export interface ChatAdvisorResponse {
   status: string;
 }
 
+function withSessionContext(messages: ChatMessageItem[], includeFullAssessment: boolean = false): ChatMessageItem[] {
+  const sessionContext = getAiSessionContext(includeFullAssessment);
+  if (!sessionContext) return messages;
+  return [{ role: 'system', content: sessionContext }, ...messages];
+}
+
 export async function askAiAdvisor(
   messages: ChatMessageItem[],
-  useRag: boolean = true
+  useRag: boolean = true,
+  useWebSearch: boolean = true,
 ): Promise<ChatAdvisorResponse> {
   const response = await fetch(`${API_BASE_URL}/ai/chat`, {
     method: 'POST',
@@ -99,8 +136,9 @@ export async function askAiAdvisor(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      messages,
+      messages: withSessionContext(messages),
       use_rag: useRag,
+      use_web_search: useWebSearch,
     }),
   });
 
@@ -119,7 +157,8 @@ export async function streamAiAdvisor(
   onError: (error: string) => void,
   onWebSources?: (sources: Array<{ title: string; url: string; snippet: string }>) => void,
   useRag: boolean = true,
-  onThinking?: (thought: string) => void
+  onThinking?: (thought: string) => void,
+  includeFullAssessment: boolean = false,
 ): Promise<void> {
   try {
     const response = await fetch(`${API_BASE_URL}/ai/chat/stream`, {
@@ -128,7 +167,7 @@ export async function streamAiAdvisor(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        messages,
+        messages: withSessionContext(messages, includeFullAssessment),
         use_rag: useRag,
       }),
     });
@@ -187,7 +226,3 @@ export async function streamAiAdvisor(
     onError(err.message || 'Stream error');
   }
 }
-
-
-
-

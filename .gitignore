@@ -48,3 +48,14 @@ Thumbs.db
 # Logs & temp databases
 *.log
 
+# Root-level screenshots and reference images
+/*.png
+/*.jpg
+/*.jpeg
+/*.gif
+/*.webp
+
+# Root-level documents and reference files
+/*.doc
+/*.docx
+/*.pdf

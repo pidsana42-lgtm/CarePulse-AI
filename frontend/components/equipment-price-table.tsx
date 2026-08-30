@@ -27,10 +27,10 @@ const EQUIPMENT: EquipmentItem[] = [
     category: 'เตียงและที่นอน',
   },
   {
-    item: 'ที่นอนลดแผลกดทับ (Air Mattress)',
+    item: 'ที่นอนลมลดแผลกดทับ',
     retailPrice: '4,000 - 15,000 บาท',
     freeVia: 'สปสช. (บริการผู้ป่วยในที่บ้าน) / พม.',
-    note: 'ผู้ป่วยติดเตียง/มีแผลกดทับ ประเมินโดยทีม Home Care ของ รพ.สต. หรือ รพ. ในเครือข่าย',
+    note: 'ผู้ป่วยติดเตียงหรือมีแผลกดทับ ประเมินโดยทีมดูแลผู้ป่วยที่บ้านของ รพ.สต. หรือโรงพยาบาลในเครือข่าย',
     category: 'เตียงและที่นอน',
   },
   {
@@ -58,21 +58,21 @@ const EQUIPMENT: EquipmentItem[] = [
     item: 'เครื่องผลิตออกซิเจน (5 ลิตร)',
     retailPrice: '25,000 - 45,000 บาท',
     freeVia: 'สปสช. (ผู้ป่วยติดเตียง / โรคปอดเรื้อรัง)',
-    note: 'ผ่านสิทธิผู้ป่วยโรคเรื้อรัง/Long Term Care ติดต่อหน่วยบริการประจำที่ลงทะเบียนไว้',
+    note: 'ผ่านสิทธิผู้ป่วยโรคเรื้อรังหรือบริการดูแลระยะยาว ติดต่อหน่วยบริการประจำที่ลงทะเบียนไว้',
     category: 'อุปกรณ์ทางการแพทย์',
   },
   {
     item: 'เครื่องดูดเสมหะแบบพกพา',
     retailPrice: '6,000 - 15,000 บาท',
     freeVia: 'สปสช. (ผู้ป่วยในที่บ้าน) / พม.',
-    note: 'กรณีผู้ป่วยติดเตียงที่มีปัญหาการหายใจ/กลืน ประเมินโดยทีม Home Care',
+    note: 'กรณีผู้ป่วยติดเตียงที่มีปัญหาการหายใจหรือการกลืน ประเมินโดยทีมดูแลผู้ป่วยที่บ้าน',
     category: 'อุปกรณ์ทางการแพทย์',
   },
   {
     item: 'ผ้าอ้อมผู้ใหญ่ทิ้ง',
     retailPrice: '1,200 - 2,000 บาท/เดือน',
-    freeVia: 'กองทุนสุขภาพตำบล (กปท.) / สปสช. (LTC)',
-    note: 'ผู้สูงอายุติดเตียงขึ้นทะเบียน LTC ได้รับเฉลี่ย 3-6 ก้อน/วัน ตามงบตำบล สมัครที่ รพ.สต.',
+    freeVia: 'กองทุนสุขภาพตำบล (กปท.) / สปสช. บริการดูแลระยะยาว',
+    note: 'ผู้สูงอายุติดเตียงขึ้นทะเบียนบริการดูแลระยะยาว อาจได้รับเฉลี่ย 3-6 ชิ้นต่อวันตามงบประมาณของพื้นที่ สมัครที่ รพ.สต.',
     category: 'การดูแลผู้ป่วยติดเตียง',
   },
   {
@@ -97,7 +97,7 @@ export function EquipmentPriceTable() {
         <p className="text-xs sm:text-sm text-slate-600 font-medium max-w-xl">
           เทียบราคาซื้อเองกับสิทธิขอรับฟรีจากหน่วยงานรัฐ — อ้างอิงราคากลางจัดซื้อของ พม. และอัตราจ่าย สปสช.
         </p>
-        <div className="liquid-glass-pill px-4 py-2 text-xs font-black text-emerald-900 shrink-0">
+        <div className="liquid-glass-pill px-4 py-2 text-xs font-black text-cyan-900 shrink-0">
           มูลค่าที่ขอฟรีได้ต่อคน: {totalValue}
         </div>
       </div>
@@ -111,7 +111,7 @@ export function EquipmentPriceTable() {
             onClick={() => setCategory(c)}
             className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer active:scale-95 ${
               category === c
-                ? 'bg-emerald-600 text-white shadow-xs'
+                ? 'bg-cyan-600 text-white shadow-xs'
                 : 'bg-black/[0.03] text-slate-600 hover:bg-black/[0.06]'
             }`}
           >
@@ -136,15 +136,15 @@ export function EquipmentPriceTable() {
                 <span className="font-bold text-slate-800">{e.retailPrice}</span>
               </div>
               <div className="flex items-start gap-2">
-                <Building2 className="w-3.5 h-3.5 text-emerald-600 mt-0.5 shrink-0" />
+                <Building2 className="w-3.5 h-3.5 text-cyan-600 mt-0.5 shrink-0" />
                 <div>
-                  <span className="font-black text-emerald-700">ขอฟรีได้:</span>{' '}
+                  <span className="font-black text-cyan-700">ขอฟรีได้:</span>{' '}
                   <span className="font-bold text-slate-800">{e.freeVia}</span>
                 </div>
               </div>
             </div>
             <p className="text-[11px] sm:text-xs text-slate-500 font-medium leading-relaxed flex items-start gap-1.5">
-              <ChevronDown className="w-3 h-3 rotate-[-90deg] mt-0.5 shrink-0 text-emerald-500" />
+              <ChevronDown className="w-3 h-3 rotate-[-90deg] mt-0.5 shrink-0 text-cyan-500" />
               {e.note}
             </p>
           </div>
@@ -158,7 +158,7 @@ export function EquipmentPriceTable() {
           href="https://dep.go.th/th/news/procurement-standard-price"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-emerald-700 hover:text-emerald-900 font-bold"
+          className="inline-flex items-center gap-1 text-cyan-700 hover:text-cyan-900 font-bold"
         >
           ประกาศราคากลาง พม. <ExternalLink className="w-3 h-3" />
         </a>
@@ -166,7 +166,7 @@ export function EquipmentPriceTable() {
           href="https://www.nhso.go.th/th/nhso-payment-medical-services-fees-per-person"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-emerald-700 hover:text-emerald-900 font-bold"
+          className="inline-flex items-center gap-1 text-cyan-700 hover:text-cyan-900 font-bold"
         >
           อัตราค่าบริการทางการแพทย์ สปสช. <ExternalLink className="w-3 h-3" />
         </a>

@@ -5,6 +5,7 @@ import { SiteHeader } from '@/components/site-header';
 import ChatAssessmentCard from '@/components/chat-assessment-card';
 import { MarkdownText } from '@/components/markdown-text';
 import { streamAiAdvisor, searchWelfareAndPolicies, uploadDocument, SearchResultItem, ChatMessageItem } from '@/lib/api';
+import { rememberDocumentInsight } from '@/lib/session-memory';
 import {
   Send,
   Loader2,
@@ -68,38 +69,38 @@ function ThinkingBox({
   if (!thinking && !isThinking) return null;
 
   return (
-    <div className="mb-3 rounded-[22px] border border-violet-200/70 bg-gradient-to-br from-violet-50/80 via-slate-50/60 to-teal-50/30 backdrop-blur-md overflow-hidden transition-all duration-300 shadow-sm">
+    <div className="mb-3 overflow-hidden border-y border-black/[0.1] transition-all duration-300">
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-4 py-2.5 text-left transition-colors hover:bg-violet-100/30 cursor-pointer select-none"
+        className="w-full flex items-center justify-between px-4 py-2.5 text-left transition-colors hover:bg-cyan-100/30 cursor-pointer select-none"
       >
         <div className="flex items-center gap-2.5">
           <div className={`size-6 rounded-xl flex items-center justify-center shadow-xs transition-all ${
-            isThinking ? 'bg-gradient-to-tr from-violet-600 to-indigo-600 text-white animate-pulse' : 'bg-violet-100 text-violet-700'
+            isThinking ? 'bg-gradient-to-tr from-cyan-600 to-cyan-600 text-white animate-pulse' : 'bg-cyan-100 text-cyan-700'
           }`}>
             <Brain className="w-3.5 h-3.5" />
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="text-xs font-black tracking-tight bg-gradient-to-r from-violet-800 via-indigo-700 to-teal-800 bg-clip-text text-transparent">
-              {isThinking ? 'กำลังคิดวิเคราะห์ข้อกฎหมายและสิทธิ...' : 'กระบวนการคิดวิเคราะห์ (Reasoning Process)'}
+            <span className="text-xs font-black tracking-tight bg-gradient-to-r from-cyan-800 via-cyan-700 to-cyan-800 bg-clip-text text-transparent">
+              {isThinking ? 'กำลังคิดวิเคราะห์ข้อกฎหมายและสิทธิ...' : 'กระบวนการคิดวิเคราะห์'}
             </span>
             {isThinking && (
-              <span className="size-2 rounded-full bg-violet-500 animate-ping inline-block ml-0.5" />
+              <span className="size-2 rounded-full bg-cyan-500 animate-ping inline-block ml-0.5" />
             )}
           </div>
         </div>
         <div className="flex items-center gap-1 text-slate-400 hover:text-slate-700">
           <span className="text-[10px] font-bold">{open ? 'ซ่อน' : 'ดูกระบวนการคิด'}</span>
-          <ChevronDown className={`w-3.5 h-3.5 text-violet-600 transition-transform duration-300 ${open ? 'rotate-180' : ''}`} />
+          <ChevronDown className={`w-3.5 h-3.5 text-cyan-600 transition-transform duration-300 ${open ? 'rotate-180' : ''}`} />
         </div>
       </button>
 
       {open && (
-        <div className="px-4.5 pb-3.5 pt-1 text-[11px] font-mono leading-relaxed text-slate-600 border-t border-violet-100/60 bg-white/50 animate-apple-fade-in whitespace-pre-wrap selection:bg-violet-100 max-h-64 overflow-y-auto">
+        <div className="px-4.5 pb-3.5 pt-1 text-[11px] font-mono leading-relaxed text-slate-600 border-t border-cyan-100/60 bg-white/50 animate-apple-fade-in whitespace-pre-wrap selection:bg-cyan-100 max-h-64 overflow-y-auto">
           {thinking || 'กำลังสืบค้นระเบียบราชการและตรวจสอบสิทธิประโยชน์ที่เกี่ยวข้อง...'}
           {isThinking && (
-            <span className="inline-block w-1.5 h-3.5 bg-violet-600 animate-pulse ml-1 align-middle rounded-sm" />
+            <span className="inline-block w-1.5 h-3.5 bg-cyan-600 animate-pulse ml-1 align-middle rounded-sm" />
           )}
         </div>
       )}
@@ -127,9 +128,9 @@ function CollapsibleSources({
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="liquid-glass-pill flex items-center gap-1.5 px-3.5 py-1.5 text-[11px] font-bold text-slate-600 hover:text-emerald-800 transition-all cursor-pointer shadow-sm"
+        className="liquid-glass-pill flex items-center gap-1.5 px-3.5 py-1.5 text-[11px] font-bold text-slate-600 hover:text-cyan-800 transition-all cursor-pointer shadow-sm"
       >
-        <ChevronDown className={`w-3.5 h-3.5 text-emerald-600 transition-transform duration-300 ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`w-3.5 h-3.5 text-cyan-600 transition-transform duration-300 ${open ? 'rotate-180' : ''}`} />
         {title} ({count} รายการ)
       </button>
       {open && <div className="mt-2.5 space-y-2 animate-apple-fade-in">{children}</div>}
@@ -144,6 +145,7 @@ export default function SearchPage() {
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [includeFullResultContext, setIncludeFullResultContext] = useState(false);
   const messagesRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -152,10 +154,13 @@ export default function SearchPage() {
   // Auto-send the question passed from the home page (/search?q=...)
   useEffect(() => {
     if (autoSentRef.current) return;
-    const q = new URLSearchParams(window.location.search).get('q');
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get('q');
+    const fromResults = params.get('from') === 'results';
     if (q && q.trim()) {
       autoSentRef.current = true;
-      handleSubmit(q);
+      setIncludeFullResultContext(fromResults);
+      handleSubmit(q, fromResults);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -188,7 +193,7 @@ export default function SearchPage() {
     }
   }, [input]);
 
-  const handleSubmit = async (text?: string) => {
+  const handleSubmit = async (text?: string, sendFullResultContext: boolean = includeFullResultContext) => {
     const query = (text ?? input).trim();
     if (loading || uploading) return;
     if (!query && !attachedFile) return;
@@ -210,6 +215,7 @@ export default function SearchPage() {
 
       try {
         const res = await uploadDocument(file, 'medical_certificate');
+        rememberDocumentInsight(res, file.name);
         const equipment: Array<{ item: string; agency: string; cost_saved: string }> =
           res.extracted_data?.matched_equipment || [];
         const eqText = equipment.length
@@ -360,7 +366,8 @@ export default function SearchPage() {
               : msg
           );
         });
-      }
+      },
+      sendFullResultContext,
     );
   };
 
@@ -374,30 +381,24 @@ export default function SearchPage() {
   const isEmptyState = messages.length === 0;
 
   return (
-    <div className="relative h-dvh overflow-clip">
-      {/* Background Liquid Mesh Orbs — clipped wrapper so they never create scrollable overflow */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-        <div className="liquid-mesh-orb-1 top-10 -left-10" />
-        <div className="liquid-mesh-orb-2 top-1/2 right-0" />
-        <div className="liquid-mesh-orb-3 bottom-0 left-1/4" />
-      </div>
-
+    <div className="apple-page relative h-dvh overflow-clip">
       <SiteHeader />
 
-      <main className="absolute inset-x-0 top-[84px] bottom-0 z-10 flex flex-col max-w-3xl mx-auto w-full px-4 sm:px-6 pb-4">
+      <main className="absolute inset-x-0 top-12 bottom-0 z-10 flex flex-col max-w-6xl mx-auto w-full px-4 sm:px-8 pb-4">
 
         {/* Empty State */}
         {isEmptyState && (
           <div className="flex-1 min-h-0 overflow-y-auto flex flex-col items-center justify-center gap-6 py-10 text-center animate-apple-fade-in">
             <div className="space-y-3">
-              <div className="liquid-glass size-20 rounded-full flex items-center justify-center mx-auto shadow-2xl ring-2 ring-white/80">
-                <Bot className="size-10 text-emerald-600" />
+              <div className="flex size-20 items-center justify-center rounded-full bg-[#e8f1ff] mx-auto">
+                <Bot className="size-10 text-[#115af2]" />
               </div>
-              <h1 className="text-3xl sm:text-4xl font-black text-slate-950 tracking-tight">
+              <p className="apple-eyebrow">ผู้ช่วยวิเคราะห์สิทธิ CarePulse</p>
+              <h1 className="apple-headline text-4xl sm:text-5xl">
                 อธิบายความต้องการของคุณ
               </h1>
-              <p className="text-slate-600 text-sm sm:text-base max-w-md font-medium leading-relaxed">
-                AI จะค้นหาสิทธิสุขภาพ สวัสดิการ และระเบียบราชการที่เกี่ยวข้องให้คุณ พร้อมดึงข้อมูลจากเว็บทางการแบบ Real-time
+              <p className="apple-subhead text-sm sm:text-base max-w-md">
+                AI จะค้นหาสิทธิสุขภาพ สวัสดิการ และระเบียบราชการที่เกี่ยวข้องให้คุณ พร้อมดึงข้อมูลล่าสุดจากเว็บไซต์ทางการ
               </p>
             </div>
 
@@ -407,9 +408,9 @@ export default function SearchPage() {
                 <button
                   key={i}
                   onClick={() => handleSubmit(prompt)}
-                  className="liquid-glass-card rounded-[22px] p-4 text-left flex items-start gap-2.5 text-xs sm:text-sm text-slate-800 font-bold group cursor-pointer"
+                  className="border-t border-black/[0.1] py-4 text-left flex items-start gap-2.5 text-xs sm:text-sm text-slate-800 font-semibold group cursor-pointer transition-colors hover:text-[#115af2]"
                 >
-                  <ChevronRight className="w-4 h-4 mt-0.5 text-emerald-600 shrink-0 group-hover:translate-x-1 transition-transform" />
+                  <ChevronRight className="w-4 h-4 mt-0.5 text-cyan-600 shrink-0 group-hover:translate-x-1 transition-transform" />
                   <span>{prompt}</span>
                 </button>
               ))}
@@ -437,7 +438,7 @@ export default function SearchPage() {
                 ) : (
                   /* Assistant Bubble */
                   <div className="flex items-start gap-2.5">
-                    <div className="liquid-glass size-9 shrink-0 rounded-full flex items-center justify-center shadow-md mt-0.5 text-emerald-600">
+                    <div className="liquid-glass size-9 shrink-0 rounded-full flex items-center justify-center shadow-md mt-0.5 text-cyan-600">
                       <Bot className="size-5" />
                     </div>
                     <div className="flex-1 space-y-3 max-w-[92%]">
@@ -451,22 +452,22 @@ export default function SearchPage() {
                       )}
 
                       {/* AI Main Answer Bubble */}
-                      <div className="liquid-glass rounded-[28px] rounded-tl-md px-5 py-4 text-sm text-slate-900 leading-relaxed shadow-md">
+                      <div className="rounded-[22px] rounded-tl-md bg-white px-5 py-4 text-sm text-slate-900 leading-relaxed border border-black/[0.07]">
                         {msg.content ? (
                           <MarkdownText content={msg.content} className="font-medium" />
                         ) : msg.isStreaming && !msg.isThinking && !msg.thinking ? (
                           <span className="flex items-center gap-2 text-slate-500 font-medium text-xs">
-                            <Loader2 className="w-4 h-4 animate-spin text-emerald-600" />
+                            <Loader2 className="w-4 h-4 animate-spin text-cyan-600" />
                             กำลังสืบค้นและวิเคราะห์ข้อมูล...
                           </span>
                         ) : msg.isStreaming && !msg.content ? (
                           <span className="flex items-center gap-2 text-slate-500 font-medium text-xs">
-                            <Loader2 className="w-4 h-4 animate-spin text-emerald-600" />
+                            <Loader2 className="w-4 h-4 animate-spin text-cyan-600" />
                             กำลังเรียบเรียงคำตอบ...
                           </span>
                         ) : null}
                         {msg.isStreaming && msg.content && (
-                          <span className="inline-block w-0.5 h-4 bg-emerald-500 animate-pulse ml-0.5 align-middle" />
+                          <span className="inline-block w-0.5 h-4 bg-cyan-500 animate-pulse ml-0.5 align-middle" />
                         )}
                       </div>
 
@@ -481,7 +482,7 @@ export default function SearchPage() {
                               rel="noopener noreferrer"
                               className="liquid-glass-card rounded-2xl p-3 text-xs flex items-start gap-2.5 group"
                             >
-                              <ExternalLink className="w-3.5 h-3.5 text-emerald-600 mt-0.5 shrink-0" />
+                              <ExternalLink className="w-3.5 h-3.5 text-cyan-600 mt-0.5 shrink-0" />
                               <div className="flex-1 min-w-0">
                                 <span className="font-bold text-slate-800 block truncate">{src.title}</span>
                                 <span className="text-slate-400 line-clamp-1 mt-0.5 text-[11px]">{src.snippet}</span>
@@ -504,21 +505,21 @@ export default function SearchPage() {
                             >
                               <div className="flex-1 min-w-0 space-y-1">
                                 <div className="flex items-center gap-1.5">
-                                  <span className="liquid-glass-pill px-2.5 py-0.5 text-[10px] font-black text-emerald-900">
+                                  <span className="liquid-glass-pill px-2.5 py-0.5 text-[10px] font-black text-cyan-900">
                                     {res.agency}
                                   </span>
                                   {res.verified && (
-                                    <span className="flex items-center gap-0.5 text-[10px] font-bold text-teal-700">
-                                      <CheckCircle2 className="w-3 h-3 text-teal-600" /> ทางการ
+                                    <span className="flex items-center gap-0.5 text-[10px] font-bold text-cyan-700">
+                                      <CheckCircle2 className="w-3 h-3 text-cyan-600" /> ทางการ
                                     </span>
                                   )}
                                 </div>
-                                <p className="text-xs font-bold text-slate-900 line-clamp-1 group-hover:text-emerald-800 transition-colors">
+                                <p className="text-xs font-bold text-slate-900 line-clamp-1 group-hover:text-cyan-800 transition-colors">
                                   {res.title}
                                 </p>
                                 <p className="text-xs text-slate-500 line-clamp-2">{res.snippet}</p>
                               </div>
-                              <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-emerald-600 shrink-0 mt-1 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                              <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-cyan-600 shrink-0 mt-1 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                             </a>
                           ))}
                         </CollapsibleSources>
@@ -553,23 +554,23 @@ export default function SearchPage() {
 
           {/* Attached Image Preview */}
           {attachedFile && (
-            <div className="flex items-center gap-3 bg-emerald-50/80 border border-emerald-200/60 rounded-2xl p-2.5 mb-2.5 animate-apple-fade-in">
+            <div className="flex items-center gap-3 bg-cyan-50/80 border border-cyan-200/60 rounded-2xl p-2.5 mb-2.5 animate-apple-fade-in">
               {imagePreview ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={imagePreview} alt={attachedFile.name} className="size-12 rounded-xl object-cover border border-emerald-200/70" />
+                <img src={imagePreview} alt={attachedFile.name} className="size-12 rounded-xl object-cover border border-cyan-200/70" />
               ) : (
-                <div className="size-12 rounded-xl bg-white flex items-center justify-center border border-emerald-200/70">
-                  <Stethoscope className="w-5 h-5 text-emerald-600" />
+                <div className="size-12 rounded-xl bg-white flex items-center justify-center border border-cyan-200/70">
+                  <Stethoscope className="w-5 h-5 text-cyan-600" />
                 </div>
               )}
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold text-emerald-900 truncate">{attachedFile.name}</p>
-                <p className="text-[11px] text-emerald-700/80 font-medium">AI จะอ่านและวิเคราะห์เอกสารเมื่อกดส่ง</p>
+                <p className="text-xs font-bold text-cyan-900 truncate">{attachedFile.name}</p>
+                <p className="text-[11px] text-cyan-700/80 font-medium">AI จะอ่านและวิเคราะห์เอกสารเมื่อกดส่ง</p>
               </div>
               <button
                 type="button"
                 onClick={() => handleAttach(null)}
-                className="p-1.5 rounded-full hover:bg-emerald-100 text-emerald-700 transition-all cursor-pointer active:scale-90 shrink-0"
+                className="p-1.5 rounded-full hover:bg-cyan-100 text-cyan-700 transition-all cursor-pointer active:scale-90 shrink-0"
                 aria-label="ลบไฟล์แนบ"
               >
                 <X className="w-4 h-4" />
@@ -577,9 +578,9 @@ export default function SearchPage() {
             </div>
           )}
 
-          <div className="liquid-glass rounded-[32px] p-2.5 sm:p-3 flex items-end gap-2.5 shadow-2xl border border-white/90">
+          <div className="rounded-[24px] border border-black/[0.08] bg-white p-2.5 sm:p-3 flex items-end gap-2.5 shadow-[0_18px_50px_-34px_rgba(0,0,0,0.45)]">
             <label
-              className="size-10 rounded-2xl flex items-center justify-center text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 cursor-pointer transition-all shrink-0 mb-0.5"
+              className="size-10 rounded-2xl flex items-center justify-center text-cyan-600 hover:text-cyan-700 hover:bg-cyan-50 cursor-pointer transition-all shrink-0 mb-0.5"
               title="แนบรูปใบรับรองแพทย์ หรือเอกสารสิทธิ"
             >
               <ImagePlus className="w-5 h-5" />
@@ -614,7 +615,7 @@ export default function SearchPage() {
             </button>
           </div>
           <p className="text-center text-[11px] text-slate-400 mt-2 font-medium">
-            กด Enter ส่ง · Shift+Enter ขึ้นบรรทัดใหม่ · แนบรูปได้ · AI ค้นหาจากเว็บทางการแบบ Real-time
+            กดปุ่มเอ็นเทอร์เพื่อส่ง · กดชิฟต์พร้อมเอ็นเทอร์เพื่อขึ้นบรรทัดใหม่ · แนบรูปได้ · AI ค้นหาข้อมูลล่าสุดจากเว็บไซต์ทางการ
           </p>
         </div>
       </main>

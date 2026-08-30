@@ -2,20 +2,24 @@ package com.carepulse.service;
 
 import com.carepulse.model.*;
 import com.carepulse.repository.AssessmentRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.*;
 
-@Slf4j
 @Service
-@RequiredArgsConstructor
 public class EligibilityCalculationService {
 
+    private static final Logger log = LoggerFactory.getLogger(EligibilityCalculationService.class);
     private final AssessmentRepository assessmentRepository;
     private final PDPAMaskingService pdpaMaskingService;
+
+    public EligibilityCalculationService(AssessmentRepository assessmentRepository, PDPAMaskingService pdpaMaskingService) {
+        this.assessmentRepository = assessmentRepository;
+        this.pdpaMaskingService = pdpaMaskingService;
+    }
 
     public AssessmentResponse evaluateRights(AssessmentRequest request) {
         String assessmentId = "EVAL-SB-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();

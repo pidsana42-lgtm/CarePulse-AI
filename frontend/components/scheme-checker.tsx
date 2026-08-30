@@ -56,7 +56,7 @@ export function SchemeChecker() {
                 className={cn(
                   'flex flex-col items-center gap-2.5 rounded-[24px] p-5 text-center transition-all duration-300 cursor-pointer',
                   active
-                    ? 'bg-emerald-600/95 backdrop-blur-xl saturate-150 text-white shadow-xl scale-105 ring-2 ring-emerald-400/40 border border-white/40'
+                    ? 'bg-cyan-600/95 backdrop-blur-xl saturate-150 text-white shadow-xl scale-105 ring-2 ring-cyan-400/40 border border-white/40'
                     : 'liquid-glass-card hover:bg-white/90 text-slate-800',
                 )}
               >
@@ -65,7 +65,7 @@ export function SchemeChecker() {
                     'flex size-12 items-center justify-center rounded-full transition-colors',
                     active
                       ? 'bg-white/20 text-white shadow-inner'
-                      : 'bg-emerald-50 text-emerald-700',
+                      : 'bg-cyan-50 text-cyan-700',
                   )}
                 >
                   <Icon className="size-6" aria-hidden="true" />
@@ -85,7 +85,7 @@ export function SchemeChecker() {
             <p className="text-sm font-medium text-slate-600">
               ผู้มีสิทธิ: <strong className="text-slate-800">{scheme.eligibility}</strong>
             </p>
-            <p className="text-xs font-semibold text-emerald-700">
+            <p className="text-xs font-semibold text-cyan-700">
               หน่วยงานดูแล: {scheme.agency}
             </p>
           </div>
@@ -93,7 +93,7 @@ export function SchemeChecker() {
           <div className="grid gap-8 md:grid-cols-2">
             <div>
               <h4 className="mb-4 flex items-center gap-2 font-black text-slate-900 text-base">
-                <BadgeCheck className="size-5 text-emerald-600" aria-hidden="true" />
+                <BadgeCheck className="size-5 text-cyan-600" aria-hidden="true" />
                 สิทธิประโยชน์ที่ได้รับ
               </h4>
               <ul className="flex flex-col gap-3">
@@ -103,7 +103,7 @@ export function SchemeChecker() {
                     className="flex items-start gap-2.5 text-sm leading-relaxed text-slate-700 font-medium"
                   >
                     <BadgeCheck
-                      className="mt-0.5 size-4 shrink-0 text-emerald-600"
+                      className="mt-0.5 size-4 shrink-0 text-cyan-600"
                       aria-hidden="true"
                     />
                     {b}
@@ -134,7 +134,7 @@ export function SchemeChecker() {
                 ))}
               </ul>
               <div className="mt-6 liquid-glass-pill flex items-center gap-2 p-4 text-xs font-bold text-slate-800 shadow-xs">
-                <Phone className="size-4 shrink-0 text-emerald-600" aria-hidden="true" />
+                <Phone className="size-4 shrink-0 text-cyan-600" aria-hidden="true" />
                 {scheme.hotline}
               </div>
             </div>

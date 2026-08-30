@@ -3,7 +3,6 @@ package com.carepulse.controller;
 import com.carepulse.model.AssessmentRequest;
 import com.carepulse.model.AssessmentResponse;
 import com.carepulse.service.EligibilityCalculationService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -13,10 +12,13 @@ import java.util.Map;
 @CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("/api/v1/eligibility")
-@RequiredArgsConstructor
 public class EligibilityController {
 
     private final EligibilityCalculationService eligibilityCalculationService;
+
+    public EligibilityController(EligibilityCalculationService eligibilityCalculationService) {
+        this.eligibilityCalculationService = eligibilityCalculationService;
+    }
 
     @PostMapping("/assess")
     public ResponseEntity<AssessmentResponse> assessRights(@RequestBody AssessmentRequest request) {

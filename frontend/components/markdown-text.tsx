@@ -33,7 +33,7 @@ export function MarkdownText({ content, className = '' }: { content: string; cla
         <ul key={key} className="space-y-1.5 my-1.5">
           {items.map((item, i) => (
             <li key={i} className="flex items-start gap-2">
-              <span className="text-emerald-500 font-black leading-relaxed mt-px">•</span>
+              <span className="text-cyan-500 font-black leading-relaxed mt-px">•</span>
               <span className="flex-1"><InlineText text={item} /></span>
             </li>
           ))}
@@ -44,7 +44,7 @@ export function MarkdownText({ content, className = '' }: { content: string; cla
         <ol key={key} className="space-y-1.5 my-1.5">
           {items.map((item, i) => (
             <li key={i} className="flex items-start gap-2">
-              <span className="text-emerald-700 font-black leading-relaxed mt-px">{i + 1}.</span>
+              <span className="text-cyan-700 font-black leading-relaxed mt-px">{i + 1}.</span>
               <span className="flex-1"><InlineText text={item} /></span>
             </li>
           ))}

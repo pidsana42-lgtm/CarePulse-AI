@@ -51,7 +51,7 @@ export function FaqSection() {
                 {f.q}
                 <span
                   aria-hidden="true"
-                  className="flex size-7 shrink-0 items-center justify-center rounded-full bg-black/[0.04] text-slate-600 font-bold transition-transform duration-300 group-open:rotate-45 group-open:bg-emerald-600 group-open:text-white"
+                  className="flex size-7 shrink-0 items-center justify-center rounded-full bg-black/[0.04] text-slate-600 font-bold transition-transform duration-300 group-open:rotate-45 group-open:bg-cyan-600 group-open:text-white"
                 >
                   +
                 </span>

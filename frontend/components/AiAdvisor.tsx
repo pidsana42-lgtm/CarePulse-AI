@@ -12,18 +12,13 @@ export default function AiAdvisor() {
   if (pathname === '/search') return null;
 
   return (
-    <div className="fixed bottom-6 right-6 z-50">
+    <div className="fixed bottom-5 right-5 z-50 sm:bottom-6 sm:right-6">
       <Link
         href="/search"
-        className="liquid-glass rounded-full py-3 px-5 flex items-center gap-3 shadow-2xl hover:scale-105 active:scale-95 transition-all duration-300 ring-4 ring-emerald-500/15 cursor-pointer group border border-white/80"
+        className="flex h-12 items-center gap-2.5 rounded-full bg-[#115af2] px-3 text-white shadow-[0_14px_30px_-12px_rgba(17,90,242,0.7)] transition hover:bg-[#1a7bf0] active:scale-95 sm:px-4"
       >
-        <div className="size-9 rounded-full bg-gradient-to-tr from-emerald-500 via-teal-500 to-emerald-700 flex items-center justify-center text-white shadow-md group-hover:rotate-12 transition-transform">
-          <Bot className="w-5 h-5" />
-        </div>
-        <span className="text-sm font-black text-slate-900 tracking-tight">ถาม AI สิทธิสุขภาพ</span>
-        <span className="liquid-glass-pill bg-emerald-100/90 text-emerald-900 text-[10px] px-2.5 py-0.5 font-black uppercase">
-          Live Web
-        </span>
+        <span className="flex size-7 items-center justify-center rounded-full bg-white/15"><Bot className="size-4" /></span>
+        <span className="hidden text-xs font-semibold sm:inline">ถาม CarePulse AI</span>
       </Link>
     </div>
   );

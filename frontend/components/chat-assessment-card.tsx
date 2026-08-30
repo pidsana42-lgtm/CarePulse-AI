@@ -13,6 +13,7 @@ import {
   PackageCheck,
   HeartHandshake,
 } from 'lucide-react';
+import { setSessionAssessment } from '@/lib/session-memory';
 
 const OCCUPATION_OPTIONS = [
   { value: 'senior', label: 'ผู้สูงอายุ (60 ปีขึ้นไป)' },
@@ -49,9 +50,7 @@ export default function ChatAssessmentCard() {
       const res = await submitAssessment(form);
       setResult(res);
       setOpen(true);
-      if (typeof window !== 'undefined') {
-        sessionStorage.setItem('latest_assessment_result', JSON.stringify(res));
-      }
+      setSessionAssessment(res);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'เกิดข้อผิดพลาด กรุณาลองใหม่');
     } finally {
@@ -68,7 +67,7 @@ export default function ChatAssessmentCard() {
         className="w-full flex items-center justify-between gap-3 px-5 py-3.5 cursor-pointer hover:bg-white/40 transition-all text-left"
       >
         <span className="flex items-center gap-2.5 text-sm font-black text-slate-900">
-          <span className="size-8 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-600 flex items-center justify-center text-white shrink-0">
+          <span className="size-8 rounded-xl bg-gradient-to-tr from-cyan-500 to-cyan-600 flex items-center justify-center text-white shrink-0">
             <ShieldCheck className="w-4 h-4" />
           </span>
           {result ? 'ผลประเมินสิทธิของคุณ' : 'ประเมินสิทธิข้ามกระทรวงในแชทนี้'}
@@ -90,7 +89,7 @@ export default function ChatAssessmentCard() {
                 max="120"
                 value={form.age}
                 onChange={(e) => setForm({ ...form, age: parseInt(e.target.value) || 0 })}
-                className="w-full px-3.5 py-2.5 bg-white/90 border border-black/[0.08] rounded-xl text-sm font-bold text-center text-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+                className="w-full px-3.5 py-2.5 bg-white/90 border border-black/[0.08] rounded-xl text-sm font-bold text-center text-cyan-800 focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
                 required
               />
             </div>
@@ -99,7 +98,7 @@ export default function ChatAssessmentCard() {
               <select
                 value={form.occupation_status}
                 onChange={(e) => setForm({ ...form, occupation_status: e.target.value })}
-                className="w-full px-3.5 py-2.5 bg-white/90 border border-black/[0.08] rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+                className="w-full px-3.5 py-2.5 bg-white/90 border border-black/[0.08] rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
               >
                 {OCCUPATION_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>{o.label}</option>
@@ -116,14 +115,14 @@ export default function ChatAssessmentCard() {
                 <button
                   type="button"
                   onClick={() => setForm({ ...form, has_disability_card: false })}
-                  className={`py-2 rounded-xl text-xs font-extrabold border transition-all cursor-pointer ${!form.has_disability_card ? 'bg-emerald-700 text-white border-emerald-700' : 'bg-white/80 text-slate-600 border-white/80'}`}
+                  className={`py-2 rounded-xl text-xs font-extrabold border transition-all cursor-pointer ${!form.has_disability_card ? 'bg-cyan-700 text-white border-cyan-700' : 'bg-white/80 text-slate-600 border-white/80'}`}
                 >
                   ไม่มี
                 </button>
                 <button
                   type="button"
                   onClick={() => setForm({ ...form, has_disability_card: true })}
-                  className={`py-2 rounded-xl text-xs font-extrabold border transition-all cursor-pointer ${form.has_disability_card ? 'bg-emerald-700 text-white border-emerald-700' : 'bg-white/80 text-slate-600 border-white/80'}`}
+                  className={`py-2 rounded-xl text-xs font-extrabold border transition-all cursor-pointer ${form.has_disability_card ? 'bg-cyan-700 text-white border-cyan-700' : 'bg-white/80 text-slate-600 border-white/80'}`}
                 >
                   มี
                 </button>
@@ -135,14 +134,14 @@ export default function ChatAssessmentCard() {
                 <button
                   type="button"
                   onClick={() => setForm({ ...form, has_private_insurance: false })}
-                  className={`py-2 rounded-xl text-xs font-extrabold border transition-all cursor-pointer ${!form.has_private_insurance ? 'bg-emerald-700 text-white border-emerald-700' : 'bg-white/80 text-slate-600 border-white/80'}`}
+                  className={`py-2 rounded-xl text-xs font-extrabold border transition-all cursor-pointer ${!form.has_private_insurance ? 'bg-cyan-700 text-white border-cyan-700' : 'bg-white/80 text-slate-600 border-white/80'}`}
                 >
                   ไม่มี
                 </button>
                 <button
                   type="button"
                   onClick={() => setForm({ ...form, has_private_insurance: true })}
-                  className={`py-2 rounded-xl text-xs font-extrabold border transition-all cursor-pointer ${form.has_private_insurance ? 'bg-emerald-700 text-white border-emerald-700' : 'bg-white/80 text-slate-600 border-white/80'}`}
+                  className={`py-2 rounded-xl text-xs font-extrabold border transition-all cursor-pointer ${form.has_private_insurance ? 'bg-cyan-700 text-white border-cyan-700' : 'bg-white/80 text-slate-600 border-white/80'}`}
                 >
                   มี
                 </button>
@@ -153,7 +152,7 @@ export default function ChatAssessmentCard() {
           {/* Citizen ID (optional) */}
           <div className="space-y-1.5">
             <label className="block text-xs font-black text-slate-700">
-              เลขบัตรประชาชน 13 หลัก <span className="font-medium text-slate-400">(ไม่บังคับ · PDPA)</span>
+              เลขบัตรประชาชน 13 หลัก <span className="font-medium text-slate-400">(ไม่บังคับ · คุ้มครองข้อมูลส่วนบุคคล)</span>
             </label>
             <input
               type="text"
@@ -161,7 +160,7 @@ export default function ChatAssessmentCard() {
               placeholder="1-XXXX-XXXXX-XX-X"
               value={form.citizen_id}
               onChange={(e) => setForm({ ...form, citizen_id: e.target.value })}
-              className="w-full px-3.5 py-2.5 bg-white/90 border border-black/[0.08] rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+              className="w-full px-3.5 py-2.5 bg-white/90 border border-black/[0.08] rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
             />
           </div>
 
@@ -187,12 +186,12 @@ export default function ChatAssessmentCard() {
       {open && result && (
         <div className="border-t border-white/60 animate-apple-fade-in">
           {/* Mini banner */}
-          <div className="bg-gradient-to-br from-emerald-600/95 via-teal-700/95 to-emerald-800/95 px-5 py-4 space-y-1">
+          <div className="bg-gradient-to-br from-cyan-600/95 via-cyan-700/95 to-cyan-800/95 px-5 py-4 space-y-1">
             <h4 className="text-sm font-black text-slate-950 flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 text-amber-300" />
               สรุปสิทธิการรักษา & สวัสดิการข้ามกระทรวง
             </h4>
-            <p className="text-[11px] font-semibold text-emerald-50/90">
+            <p className="text-[11px] font-semibold text-cyan-50/90">
               CarePulse AI รวบรวมสิทธิจาก สปสช., กระทรวง พม., กองทุนสุขภาพตำบล, ประกันสังคม และประกันเอกชน
             </p>
           </div>
@@ -200,7 +199,7 @@ export default function ChatAssessmentCard() {
           <div className="px-5 py-4 space-y-3">
             {/* Primary right */}
             <div className="liquid-glass-card rounded-2xl p-3.5 space-y-1.5">
-              <span className="liquid-glass-pill bg-emerald-600 text-white text-[10px] font-black px-2.5 py-0.5 uppercase">
+              <span className="liquid-glass-pill bg-cyan-600 text-white text-[10px] font-black px-2.5 py-0.5 uppercase">
                 สิทธิหลัก
               </span>
               <p className="text-sm font-black text-slate-900">{result.primary_right.scheme_name}</p>
@@ -211,19 +210,19 @@ export default function ChatAssessmentCard() {
 
             {/* Quick stats */}
             <div className="grid grid-cols-2 gap-2.5">
-              <div className="liquid-glass-card rounded-2xl p-3 bg-emerald-50/70 space-y-0.5">
-                <span className="text-[10px] font-black text-emerald-900 uppercase flex items-center gap-1">
+              <div className="liquid-glass-card rounded-2xl p-3 bg-cyan-50/70 space-y-0.5">
+                <span className="text-[10px] font-black text-cyan-900 uppercase flex items-center gap-1">
                   <Banknote className="w-3 h-3" /> มูลค่าที่รัฐรองรับ
                 </span>
-                <p className="text-sm font-black text-emerald-950">
+                <p className="text-sm font-black text-cyan-950">
                   {result.cost_planning?.total_estimated_benefit_value || '—'}
                 </p>
               </div>
-              <div className="liquid-glass-card rounded-2xl p-3 bg-teal-50/70 space-y-0.5">
-                <span className="text-[10px] font-black text-teal-900 uppercase flex items-center gap-1">
+              <div className="liquid-glass-card rounded-2xl p-3 bg-cyan-50/70 space-y-0.5">
+                <span className="text-[10px] font-black text-cyan-900 uppercase flex items-center gap-1">
                   <PackageCheck className="w-3 h-3" /> อุปกรณ์ที่ขอได้
                 </span>
-                <p className="text-sm font-black text-teal-950">
+                <p className="text-sm font-black text-cyan-950">
                   {result.cost_planning?.eligible_equipment_count ?? 0} หมวด
                 </p>
               </div>
@@ -231,7 +230,7 @@ export default function ChatAssessmentCard() {
 
             {result.additional_rights.length > 0 && (
               <p className="text-xs font-bold text-slate-600 flex items-center gap-1.5">
-                <HeartHandshake className="w-3.5 h-3.5 text-teal-600" />
+                <HeartHandshake className="w-3.5 h-3.5 text-cyan-600" />
                 สิทธิเสริมอีก {result.additional_rights.length} รายการ เช่น{' '}
                 {result.additional_rights.slice(0, 2).map((r) => r.scheme_name).join(' · ')}
               </p>
