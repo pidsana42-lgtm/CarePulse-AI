@@ -135,11 +135,15 @@ class AIMedicalCertificateReader:
 
         detected_conditions = []
         detected_hospital = "ไม่ระบุชัดเจนในเอกสาร"
+        detected_patient_name = ""
+        detected_citizen_id = ""
+        detected_age = None
         
         is_bedridden = False
         needs_oxygen = False
         needs_wheelchair = False
         needs_diapers = False
+        has_incontinence = False
         is_kidney_disease = False
         is_cancer = False
         adl_score_found = ""
@@ -148,6 +152,33 @@ class AIMedicalCertificateReader:
         hosp_match = re.search(r"(โรงพยาบาล[^\n\r,]+|รพ\.[^\n\r,]+|ศูนย์บริการสาธารณสุข[^\n\r,]+|คลินิก[^\n\r,]+)", raw_text)
         if hosp_match:
             detected_hospital = hosp_match.group(1).strip()
+
+        # Detect basic patient information for transient form prefill.
+        citizen_match = re.search(
+            r"(?<!\d)(\d)[-\s]?(\d{4})[-\s]?(\d{5})[-\s]?(\d{2})[-\s]?(\d)(?!\d)",
+            raw_text,
+        )
+        if citizen_match:
+            detected_citizen_id = "".join(citizen_match.groups())
+
+        patient_name_match = re.search(
+            r"(?:ชื่อ(?:ผู้ป่วย|ผู้รับบริการ)?(?:\s*[-–]?\s*นามสกุล)?|ผู้ป่วย)\s*[:：]?\s*([^\n\r]{2,100})",
+            raw_text,
+            flags=re.IGNORECASE,
+        )
+        if patient_name_match:
+            detected_patient_name = re.split(
+                r"\s+(?:เลข(?:ประจำตัว|บัตร)|อายุ|เพศ|วัน(?:ที่|เกิด)|HN|AN)(?=\s|[:：])",
+                patient_name_match.group(1).strip(),
+                maxsplit=1,
+                flags=re.IGNORECASE,
+            )[0].strip(" :-–")
+
+        age_match = re.search(r"อายุ\s*[:：]?\s*([0-9]{1,3})\s*(?:ปี|yrs?|years?)?", raw_text, flags=re.IGNORECASE)
+        if age_match:
+            parsed_age = int(age_match.group(1))
+            if 0 <= parsed_age <= 130:
+                detected_age = parsed_age
 
         # Detect ADL score
         adl_match = re.search(r"(adl|คะแนน\s*adl)[\s:=]*([0-9]+)", combined_corpus)
@@ -183,14 +214,13 @@ class AIMedicalCertificateReader:
         if any(k in combined_corpus for k in ["กลั้น", "ปัสสาวะ", "incontinence", "อุจจาระ"]):
             detected_conditions.append("ภาวะกลั้นปัสสาวะ/อุจจาระไม่ได้ (Incontinence)")
             needs_diapers = True
+            has_incontinence = True
 
         if not detected_conditions:
             if raw_text:
                 detected_conditions.append(f"ผลตรวจทางการแพทย์: {raw_text[:100]}...")
             else:
                 detected_conditions.append("เอกสารทางการแพทย์ (ประเมินสิทธิสุขภาพทั่วไป)")
-            needs_diapers = True
-            needs_wheelchair = True
 
         if adl_score_found:
             detected_conditions.append(adl_score_found)
@@ -305,9 +335,21 @@ class AIMedicalCertificateReader:
             "ocr_engine": ocr_engine,
             "ocr_raw_text": raw_text if raw_text else "อ่านข้อมูลภาพเรียบร้อยแล้ว (ไม่พบตัวอักษรพิมพ์ชัดเจน)",
             "reviewed_by_user": corrected_text is not None,
+            "detected_patient_name": detected_patient_name,
+            "detected_citizen_id": detected_citizen_id,
+            "detected_age": detected_age,
             "detected_hospital": detected_hospital,
             "detected_conditions": detected_conditions,
             "is_bedridden_or_adl_limited": is_bedridden,
+            "suggested_daily_living": "bedridden" if is_bedridden else ("partial" if needs_wheelchair else "independent"),
+            "has_mobility_limitation": needs_wheelchair or is_bedridden,
+            "has_incontinence": has_incontinence,
+            "has_disability_card": any(k in combined_corpus for k in ["บัตรประจำตัวคนพิการ", "บัตรคนพิการ", "disability card"]),
+            "suggested_needs_equipment": [
+                *(["adult_diaper"] if needs_diapers else []),
+                *(["wheelchair"] if needs_wheelchair else []),
+                *(["oxygen"] if needs_oxygen else []),
+            ],
             "ai_clinical_summary": ai_clinical_summary,
             "matched_equipment": matched_equipment,
             "eligible_schemes": eligible_schemes,

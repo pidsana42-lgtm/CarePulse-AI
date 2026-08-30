@@ -5,14 +5,16 @@ import { useRouter } from 'next/navigation';
 import {
   CheckCircle2,
   Database,
+  FileCheck2,
+  FileUp,
   Loader2,
   LockKeyhole,
   Search,
   UserRound,
 } from 'lucide-react';
-import { lookupMockRegistry } from '@/lib/api';
+import { lookupMockRegistry, reviewDocumentText, uploadDocument } from '@/lib/api';
 import { assessMockEligibility } from '@/lib/mock-eligibility';
-import { AssessmentInput } from '@/types';
+import { AssessmentInput, DocumentScanResult } from '@/types';
 import { SiteHeader } from '@/components/site-header';
 import { SiteFooter } from '@/components/site-footer';
 import { getSessionLocation, setSessionAssessment, setSessionLocation } from '@/lib/session-memory';
@@ -57,6 +59,11 @@ export default function AssessmentPage() {
   const [loadingStage, setLoadingStage] = useState(0);
   const [error, setError] = useState('');
   const [locationStatus, setLocationStatus] = useState<LocationStatus>('idle');
+  const [documentLoading, setDocumentLoading] = useState(false);
+  const [medicalDocument, setMedicalDocument] = useState<{ fileName: string; result: DocumentScanResult } | null>(null);
+  const [documentError, setDocumentError] = useState('');
+  const [documentReviewText, setDocumentReviewText] = useState('');
+  const [documentReviewing, setDocumentReviewing] = useState(false);
 
   useEffect(() => {
     if (!loading) {
@@ -110,6 +117,9 @@ export default function AssessmentPage() {
       full_name: 'สมชาย ตัวอย่าง',
       consent_to_assess: true,
     });
+    setMedicalDocument(null);
+    setDocumentReviewText('');
+    setDocumentError('');
     setError('');
   };
 
@@ -120,7 +130,67 @@ export default function AssessmentPage() {
       full_name: 'อรุณี ข้าราชการตัวอย่าง',
       consent_to_assess: true,
     });
+    setMedicalDocument(null);
+    setDocumentReviewText('');
+    setDocumentError('');
     setError('');
+  };
+
+  const applyDocumentDataToForm = (extracted: DocumentScanResult['extracted_data']) => {
+    setFormData((current) => ({
+      ...current,
+      full_name: String(extracted.detected_patient_name ?? '').trim() || current.full_name,
+    }));
+  };
+
+  const handleMedicalDocument = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || documentLoading) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      setDocumentError('ไฟล์ต้องมีขนาดไม่เกิน 10 เมกะไบต์');
+      return;
+    }
+
+    setDocumentLoading(true);
+    setDocumentError('');
+    try {
+      const result = await uploadDocument(file, 'medical_certificate');
+      const extracted = result.extracted_data ?? {};
+      applyDocumentDataToForm(extracted);
+      setMedicalDocument({ fileName: file.name, result });
+      const rawText = String(extracted.ocr_raw_text ?? '');
+      setDocumentReviewText(rawText.includes('ไม่พบตัวอักษรพิมพ์ชัดเจน') ? '' : rawText);
+    } catch (scanError) {
+      setDocumentError(scanError instanceof Error ? scanError.message : 'ไม่สามารถอ่านใบรับรองแพทย์ได้');
+    } finally {
+      setDocumentLoading(false);
+    }
+  };
+
+  const applyReviewedDocumentText = async () => {
+    if (!medicalDocument || !documentReviewText.trim() || documentReviewing) {
+      if (!documentReviewText.trim()) setDocumentError('กรุณาพิมพ์หรือตรวจแก้ข้อความจากเอกสารก่อนเติมข้อมูลใหม่');
+      return;
+    }
+
+    setDocumentReviewing(true);
+    setDocumentError('');
+    try {
+      const reviewedResult = await reviewDocumentText(
+        medicalDocument.fileName,
+        medicalDocument.result.document_type,
+        documentReviewText.trim(),
+      );
+      applyDocumentDataToForm(reviewedResult.extracted_data ?? {});
+      setMedicalDocument({ fileName: medicalDocument.fileName, result: reviewedResult });
+      setDocumentReviewText(String(reviewedResult.extracted_data?.ocr_raw_text ?? documentReviewText));
+    } catch (reviewError) {
+      setDocumentError(reviewError instanceof Error ? reviewError.message : 'ไม่สามารถนำข้อความที่แก้ไขมาเติมแบบฟอร์มได้');
+    } finally {
+      setDocumentReviewing(false);
+    }
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -214,6 +284,50 @@ export default function AssessmentPage() {
             </div>
 
             <div className="mt-6 space-y-5">
+              <div className="rounded-2xl border border-[#115af2]/20 bg-[#f7faff] p-4">
+                <div className="flex items-start gap-3">
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#e8f1ff] text-[#115af2]"><FileUp className="size-5" /></span>
+                  <div>
+                    <p className="text-sm font-semibold text-[#1d1d1f]">มีใบรับรองแพทย์หรือไม่</p>
+                    <p className="mt-1 text-xs leading-relaxed text-[#6e6e73]">แนบเอกสารเพื่อให้ AI อ่านและเติมชื่อ–นามสกุลลงในแบบฟอร์ม แล้วตรวจแก้ก่อนดำเนินการต่อ</p>
+                  </div>
+                </div>
+
+                <label className={`mt-4 flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold transition ${documentLoading ? 'cursor-wait bg-[#dfeeff] text-[#115af2]' : 'bg-[#115af2] text-white hover:bg-[#1a7bf0]'}`}>
+                  <input type="file" accept="image/*,.pdf" disabled={documentLoading} onChange={handleMedicalDocument} className="hidden" />
+                  {documentLoading ? <Loader2 className="size-4 animate-spin" /> : medicalDocument ? <FileCheck2 className="size-4" /> : <FileUp className="size-4" />}
+                  {documentLoading ? 'AI กำลังอ่านเอกสาร...' : medicalDocument ? 'เปลี่ยนใบรับรองแพทย์' : 'แนบใบรับรองแพทย์'}
+                </label>
+
+                {medicalDocument && (
+                  <div className="mt-3 rounded-xl bg-emerald-50 p-3 text-xs text-emerald-950">
+                    <strong className="flex items-center gap-1.5"><FileCheck2 className="size-4" /> เติมข้อมูลจาก {medicalDocument.fileName} แล้ว</strong>
+                    <span className="mt-1 block leading-relaxed">ความมั่นใจในการอ่านข้อความ {Math.round(medicalDocument.result.ocr_confidence * 100)}% กรุณาตรวจชื่อ–นามสกุลด้านล่างอีกครั้ง</span>
+                    <label className="mt-3 block">
+                      <span className="font-semibold">ข้อความที่ AI อ่านได้</span>
+                      <textarea
+                        rows={4}
+                        value={documentReviewText}
+                        onChange={(event) => setDocumentReviewText(event.target.value)}
+                        placeholder="หาก AI อ่านชื่อไม่ออก สามารถพิมพ์บรรทัดชื่อผู้ป่วยจากใบรับรองแพทย์ได้"
+                        className="mt-1.5 w-full resize-y rounded-xl border border-emerald-200 bg-white p-3 text-sm leading-relaxed text-slate-900 outline-none focus:border-[#115af2] focus:ring-4 focus:ring-[#115af2]/10"
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      disabled={documentReviewing}
+                      onClick={applyReviewedDocumentText}
+                      className="mt-2 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-full bg-emerald-700 px-4 text-xs font-bold text-white hover:bg-emerald-800 disabled:cursor-wait disabled:opacity-60"
+                    >
+                      {documentReviewing ? <Loader2 className="size-4 animate-spin" /> : <FileCheck2 className="size-4" />}
+                      {documentReviewing ? 'กำลังเติมข้อมูลใหม่...' : 'นำข้อความนี้มาเติมแบบฟอร์มใหม่'}
+                    </button>
+                  </div>
+                )}
+                {documentError && <p role="alert" className="mt-3 text-xs font-semibold text-rose-700">{documentError}</p>}
+                <p className="mt-3 text-[11px] leading-relaxed text-amber-700">ระบบสาธิตควรใช้เอกสารตัวอย่างเท่านั้น ข้อมูลจาก AI อาจมีข้อผิดพลาด โปรดตรวจสอบซ้ำ</p>
+              </div>
+
               <label className="block space-y-2">
                 <span className="text-sm font-semibold text-[#1d1d1f]">ชื่อ–นามสกุล</span>
                 <input
