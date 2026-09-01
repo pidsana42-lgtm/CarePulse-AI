@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&display=swap');
+
 @import 'tailwindcss';
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
@@ -5,7 +7,7 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Thonburi', 'Noto Sans Thai', 'Leelawadee UI', 'Segoe UI', system-ui, sans-serif;
+  --font-sans: 'IBM Plex Sans Thai', sans-serif;
   --color-cyan-50: #f2fdff;
   --color-cyan-100: #dff9ff;
   --color-cyan-200: #9be8fd;
@@ -299,7 +301,7 @@
 
 .apple-eyebrow {
   color: #115af2;
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   font-weight: 700;
   letter-spacing: 0.03em;
 }

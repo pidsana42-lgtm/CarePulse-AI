@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { HeartPulse, LogOut, Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { clearCarePulseSession, hasCarePulseSession } from '@/lib/session-memory';
@@ -30,8 +30,8 @@ export function SiteHeader() {
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-black/[0.055] bg-white">
-      <div className="mx-auto flex h-12 w-full max-w-7xl items-center justify-between px-4 sm:px-8">
+    <header className="sticky top-0 z-40 w-full border-b border-black/5.5 bg-white">
+      <div className="mx-auto flex h-20 sm:h-16 w-full max-w-7xl items-center justify-between px-4 sm:px-8">
         <a href="/assessment" className="flex items-center gap-2 text-[#1d1d1f] transition-opacity hover:opacity-70">
           <span className="flex size-7 items-center justify-center rounded-full bg-[#072b77] text-white">
             <HeartPulse className="size-4" aria-hidden="true" />
@@ -41,7 +41,7 @@ export function SiteHeader() {
 
         <nav aria-label="เมนูหลัก" className="hidden items-center gap-8 md:flex">
           {NAV_LINKS.map((link) => (
-            <a key={link.href} href={link.href} className="text-[12px] font-medium text-[#1d1d1f] transition-opacity hover:opacity-55">
+            <a key={link.href} href={link.href} className="text-sm font-medium text-[#1d1d1f] transition-opacity hover:opacity-55">
               {link.label}
             </a>
           ))}
@@ -49,11 +49,11 @@ export function SiteHeader() {
 
         <div className="hidden items-center gap-1.5 sm:flex">
           {sessionActive && (
-            <Button type="button" variant="ghost" size="sm" onClick={endSession} className="rounded-full px-3 text-[11px] text-[#6e6e73]">
+            <Button type="button" variant="ghost" size="sm" onClick={endSession} className="rounded-full px-3 text-sm text-[#6e6e73]">
               <LogOut className="size-3.5" /> จบช่วงการใช้งาน
             </Button>
           )}
-          <a href="/assessment" className="inline-flex h-7 items-center rounded-full bg-[#115af2] px-3.5 text-[11px] font-semibold text-white transition hover:bg-[#1a7bf0]">
+          <a href="/assessment" className="inline-flex h-9 items-center rounded-full bg-[#115af2] px-3.5 text-sm font-semibold text-white transition hover:bg-cyan-600">
             เริ่มตรวจสิทธิ
           </a>
         </div>
@@ -64,10 +64,10 @@ export function SiteHeader() {
       </div>
 
       {menuOpen && (
-        <nav aria-label="เมนูบนมือถือ" className="border-t border-black/[0.055] bg-white px-5 py-5 md:hidden">
+        <nav aria-label="เมนูบนมือถือ" className="border-t border-black/5.5 bg-white px-5 py-5 md:hidden">
           <div className="mx-auto flex max-w-7xl flex-col">
             {NAV_LINKS.map((link) => (
-              <a key={link.href} href={link.href} onClick={() => setMenuOpen(false)} className="border-b border-black/[0.055] py-3.5 text-lg font-semibold text-[#1d1d1f] last:border-0">
+              <a key={link.href} href={link.href} onClick={() => setMenuOpen(false)} className="border-b border-black/5.5 py-3.5 text-lg font-semibold text-[#1d1d1f] last:border-0">
                 {link.label}
               </a>
             ))}

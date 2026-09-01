@@ -84,8 +84,8 @@ export default function ResultsPage() {
           <span className="flex size-16 items-center justify-center rounded-3xl bg-amber-100 text-amber-800"><AlertTriangle className="size-8" /></span>
           <h1 className="mt-5 text-2xl font-black text-slate-950">ยังไม่มีผลการตรวจสิทธิ</h1>
           <p className="mt-2 text-sm leading-relaxed text-slate-600">กรอกชื่อและเลขบัตรประชาชนตัวอย่างก่อน ระบบจึงจะแสดงสิทธิและความคุ้มครองที่พบ</p>
-          <Link href="/assessment" className="mt-6 inline-flex items-center gap-2 rounded-full bg-[#115af2] px-6 py-3 text-sm font-black text-white hover:bg-[#1a7bf0]">
-            เริ่มตรวจสอบสิทธิ <FileSearch className="size-4" />
+          <Link href="/assessment" className="mt-6 inline-flex items-center gap-2 rounded-full bg-[#115af2] px-6 py-3 text-sm font-black text-white hover:bg-cyan-600">
+             <FileSearch className="size-4" />
           </Link>
         </main>
         <SiteFooter />

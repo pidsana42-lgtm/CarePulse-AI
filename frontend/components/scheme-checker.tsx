@@ -1,15 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import {
-  BadgeCheck,
-  AlertCircle,
-  Phone,
-  Landmark,
-  Users,
-  Briefcase,
-  HelpCircle,
-} from 'lucide-react'
+import { BadgeCheck, AlertCircle, Phone, Landmark, Users, Briefcase, HelpCircle } from 'lucide-react'
 import { schemes, type SchemeId } from '@/lib/health-data'
 import { cn } from '@/lib/utils'
 
@@ -25,23 +17,22 @@ export function SchemeChecker() {
   const scheme = schemes.find((s) => s.id === selected) ?? schemes[0]
 
   return (
-    <section id="check-rights" className="scroll-mt-20 py-20 bg-[#f5f5f7] border-b border-black/[0.06] relative overflow-x-clip">
-      <div className="mx-auto w-full max-w-5xl px-4 sm:px-6">
+    <section id="check-rights" className="scroll-mt-20 py-16 md:py-20">
+      <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
         <div className="mb-10 flex flex-col items-center gap-3 text-center">
-          <h2 className="text-3xl sm:text-5xl font-black tracking-tight text-slate-950">
-            ตรวจสอบสิทธิการรักษาของคุณ
+          <h2 className="text-balance text-3xl font-bold text-foreground">
+            ตรวจสอบสิทธิของคุณ
           </h2>
-          <p className="max-w-xl text-pretty leading-relaxed text-slate-600 text-sm sm:text-base font-medium">
+          <p className="max-w-2xl text-pretty leading-relaxed text-muted-foreground">
             เลือกสิทธิที่คุณมี เพื่อดูสิทธิประโยชน์และข้อจำกัดโดยละเอียด
-            หากไม่แน่ใจว่ามีสิทธิใด โทรสายด่วน สปสช. 1330 หรือตรวจสอบผ่านแอปเป๋าตัง
+            หากไม่แน่ใจว่ามีสิทธิใด ตรวจสอบผ่านแท็บ ตรวจสอบสิทธิ ด้านบนหรือโทรสายด่วน สปสช. 1330 
           </p>
         </div>
 
-        {/* Liquid Glass Radios */}
         <div
           role="radiogroup"
           aria-label="เลือกสิทธิรักษาพยาบาล"
-          className="mb-8 grid grid-cols-2 gap-3.5 md:grid-cols-4"
+          className="mb-8 grid grid-cols-2 gap-3 md:grid-cols-4"
         >
           {schemes.map((s) => {
             const Icon = schemeIcons[s.id]
@@ -54,23 +45,28 @@ export function SchemeChecker() {
                 aria-checked={active}
                 onClick={() => setSelected(s.id)}
                 className={cn(
-                  'flex flex-col items-center gap-2.5 rounded-[24px] p-5 text-center transition-all duration-300 cursor-pointer',
+                  'flex flex-col items-center gap-2 rounded-xl border p-4 text-center transition-all',
                   active
-                    ? 'bg-cyan-600/95 backdrop-blur-xl saturate-150 text-white shadow-xl scale-105 ring-2 ring-cyan-400/40 border border-white/40'
-                    : 'liquid-glass-card hover:bg-white/90 text-slate-800',
+                    ? 'border-primary bg-secondary shadow-sm'
+                    : 'border-border bg-card hover:border-primary/50',
                 )}
               >
                 <span
                   className={cn(
-                    'flex size-12 items-center justify-center rounded-full transition-colors',
+                    'flex size-11 items-center justify-center rounded-full',
                     active
-                      ? 'bg-white/20 text-white shadow-inner'
-                      : 'bg-cyan-50 text-cyan-700',
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted text-muted-foreground',
                   )}
                 >
-                  <Icon className="size-6" aria-hidden="true" />
+                  <Icon className="size-5" aria-hidden="true" />
                 </span>
-                <span className={cn('text-sm font-black', active ? 'text-white' : 'text-slate-900')}>
+                <span
+                  className={cn(
+                    'text-sm font-semibold',
+                    active ? 'text-primary' : 'text-foreground',
+                  )}
+                >
                   {s.shortName}
                 </span>
               </button>
@@ -78,32 +74,31 @@ export function SchemeChecker() {
           })}
         </div>
 
-        {/* Liquid Glass Detail Card */}
-        <div className="liquid-glass rounded-[36px] p-7 md:p-10 shadow-2xl space-y-8 animate-apple-fade-in border border-white/80">
-          <div className="flex flex-col gap-1 border-b border-black/[0.05] pb-5">
-            <h3 className="text-2xl font-black text-slate-950 tracking-tight">{scheme.name}</h3>
-            <p className="text-sm font-medium text-slate-600">
-              ผู้มีสิทธิ: <strong className="text-slate-800">{scheme.eligibility}</strong>
+        <div className="rounded-2xl border border-border bg-card p-6 md:p-8">
+          <div className="mb-6 flex flex-col gap-1">
+            <h3 className="text-xl font-bold text-foreground">{scheme.name}</h3>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              ผู้มีสิทธิ: {scheme.eligibility}
             </p>
-            <p className="text-xs font-semibold text-cyan-700">
+            <p className="text-sm text-muted-foreground">
               หน่วยงานดูแล: {scheme.agency}
             </p>
           </div>
 
           <div className="grid gap-8 md:grid-cols-2">
             <div>
-              <h4 className="mb-4 flex items-center gap-2 font-black text-slate-900 text-base">
-                <BadgeCheck className="size-5 text-cyan-600" aria-hidden="true" />
+              <h4 className="mb-4 flex items-center gap-2 font-semibold text-foreground">
+                <BadgeCheck className="size-5 text-primary" aria-hidden="true" />
                 สิทธิประโยชน์ที่ได้รับ
               </h4>
               <ul className="flex flex-col gap-3">
                 {scheme.benefits.map((b) => (
                   <li
                     key={b}
-                    className="flex items-start gap-2.5 text-sm leading-relaxed text-slate-700 font-medium"
+                    className="flex items-start gap-2.5 text-sm leading-relaxed text-foreground"
                   >
                     <BadgeCheck
-                      className="mt-0.5 size-4 shrink-0 text-cyan-600"
+                      className="mt-0.5 size-4 shrink-0 text-primary"
                       aria-hidden="true"
                     />
                     {b}
@@ -112,9 +107,9 @@ export function SchemeChecker() {
               </ul>
             </div>
             <div>
-              <h4 className="mb-4 flex items-center gap-2 font-black text-slate-900 text-base">
+              <h4 className="mb-4 flex items-center gap-2 font-semibold text-foreground">
                 <AlertCircle
-                  className="size-5 text-amber-600"
+                  className="size-5 text-accent-foreground"
                   aria-hidden="true"
                 />
                 ข้อจำกัดที่ควรทราบ
@@ -123,18 +118,18 @@ export function SchemeChecker() {
                 {scheme.limitations.map((l) => (
                   <li
                     key={l}
-                    className="flex items-start gap-2.5 text-sm leading-relaxed text-slate-500 font-medium"
+                    className="flex items-start gap-2.5 text-sm leading-relaxed text-muted-foreground"
                   >
                     <AlertCircle
-                      className="mt-0.5 size-4 shrink-0 text-amber-500"
+                      className="mt-0.5 size-4 shrink-0 text-accent-foreground"
                       aria-hidden="true"
                     />
                     {l}
                   </li>
                 ))}
               </ul>
-              <div className="mt-6 liquid-glass-pill flex items-center gap-2 p-4 text-xs font-bold text-slate-800 shadow-xs">
-                <Phone className="size-4 shrink-0 text-cyan-600" aria-hidden="true" />
+              <div className="mt-6 flex items-center gap-2 rounded-lg bg-secondary p-4 text-sm font-medium text-secondary-foreground">
+                <Phone className="size-4 shrink-0" aria-hidden="true" />
                 {scheme.hotline}
               </div>
             </div>

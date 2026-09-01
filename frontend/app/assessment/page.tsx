@@ -1,30 +1,14 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  CheckCircle2,
-  Database,
-  FileCheck2,
-  FileUp,
-  Loader2,
-  LockKeyhole,
-  Search,
-  UserRound,
-} from 'lucide-react';
+import { AlertCircle, BadgeCheck, CheckCircle2, ChevronRight, Database, ExternalLink, FileUp, Loader2, LockKeyhole, Phone, Search, UserRound } from 'lucide-react';
 import { lookupMockRegistry, reviewDocumentText, submitAssessment, uploadDocument } from '@/lib/api';
 import { assessMockEligibility } from '@/lib/mock-eligibility';
 import { AssessmentInput, AssessmentResult, DocumentScanResult } from '@/types';
 import { SiteHeader } from '@/components/site-header';
 import { SiteFooter } from '@/components/site-footer';
-import {
-  getSessionDocumentResults,
-  getSessionAssessment,
-  getSessionLocation,
-  rememberDocumentInsight,
-  setSessionAssessment,
-  setSessionLocation,
-} from '@/lib/session-memory';
+import { getSessionDocumentResults, getSessionAssessment, getSessionLocation, rememberDocumentInsight, setSessionAssessment, setSessionLocation } from '@/lib/session-memory';
 
 function documentNameParts(extracted: DocumentScanResult['extracted_data']) {
   const certificate = extracted.certificate_data && typeof extracted.certificate_data === 'object'
@@ -86,6 +70,7 @@ function mergeDocumentData(
 }
 
 type LocationStatus = 'idle' | 'loading' | 'success' | 'denied' | 'error';
+type DocumentInputMode = 'manual' | 'upload';
 
 const emptyForm: AssessmentInput = {
   citizen_id: '',
@@ -104,11 +89,125 @@ const emptyForm: AssessmentInput = {
   consent_to_assess: false,
 };
 
-const gateways = [
-  { code: 'NHSO', agency: 'สปสช.', detail: 'สิทธิหลักประกันสุขภาพ' },
-  { code: 'SSO', agency: 'ประกันสังคม', detail: 'สถานะผู้ประกันตน' },
-  { code: 'CGD', agency: 'กรมบัญชีกลาง', detail: 'สวัสดิการข้าราชการ' },
-  { code: 'OIC', agency: 'คปภ.', detail: 'กรมธรรม์ชีวิตและสุขภาพ' },
+type GatewayCode = 'NHSO' | 'MSDHS' | 'OIC' | 'CGD';
+
+interface GatewayBenefitGuide {
+  code: GatewayCode;
+  agency: string;
+  detail: string;
+  title: string;
+  eligibility: string;
+  owner: string;
+  benefits: string[];
+  limitations: string[];
+  hotline: string;
+  sourceLabel: string;
+  sourceUrl: string;
+}
+
+const gateways: GatewayBenefitGuide[] = [
+  {
+    code: 'NHSO',
+    agency: 'สปสช.',
+    detail: 'สิทธิหลักประกันสุขภาพ (บัตรทอง)',
+    title: 'สิทธิหลักประกันสุขภาพแห่งชาติ (บัตรทอง 30 บาท)',
+    eligibility: 'คนไทยที่ไม่มีสิทธิประกันสังคมหรือสวัสดิการรักษาพยาบาลอื่นของรัฐ และมีสถานะสิทธิบัตรทองในระบบ สปสช.',
+    owner: 'สำนักงานหลักประกันสุขภาพแห่งชาติ (สปสช.)',
+    benefits: [
+      'ตรวจ วินิจฉัย และรักษาโรคทั่วไป โรคเรื้อรัง และโรคค่าใช้จ่ายสูงตามข้อบ่งชี้',
+      'ผู้ป่วยนอก ผู้ป่วยใน ผ่าตัด และการส่งต่อตามระบบบริการ',
+      'ยาและเวชภัณฑ์ตามบัญชียาหลักแห่งชาติ รวมถึงบริการฟื้นฟูสมรรถภาพ',
+      'บริการสร้างเสริมสุขภาพ วัคซีน และตรวจคัดกรองโรคตามช่วงวัย',
+      'ฝากครรภ์ คลอดบุตร ดูแลหลังคลอด และบริการทันตกรรมพื้นฐาน',
+      'ฟอกไต ล้างไตทางช่องท้อง เคมีบำบัด รังสีรักษา และบริการมะเร็งตามเกณฑ์',
+      'เจ็บป่วยฉุกเฉินวิกฤต ใช้ UCEP ได้ทุกโรงพยาบาลตามเงื่อนไข',
+      'ใช้บัตรประชาชนรับบริการ 30 บาทรักษาทุกที่ ณ หน่วยบริการที่เข้าร่วม',
+    ],
+    limitations: [
+      'ต้องยืนยันสถานะสิทธิและหน่วยบริการประจำก่อนรับบริการ',
+      'โรงพยาบาลเอกชนนอกเครือข่ายไม่ครอบคลุม ยกเว้นกรณีฉุกเฉินหรือมีการส่งตัวตามเกณฑ์',
+      'บริการเพื่อความสวยงามหรือบริการที่ไม่มีข้อบ่งชี้ทางการแพทย์ไม่อยู่ในชุดสิทธิ',
+      'ยา หัตถการ และอุปกรณ์บางรายการมีเกณฑ์อนุมัติหรืออาจมีส่วนเกินที่ต้องชำระเอง',
+    ],
+    hotline: 'สายด่วน สปสช. 1330',
+    sourceLabel: 'คู่มือใช้สิทธิบัตรทอง ปี 2569',
+    sourceUrl: 'https://media.nhso.go.th/assets/portals/1/files/UC_69_final.pdf',
+  },
+  {
+    code: 'MSDHS',
+    agency: 'พม.',
+    detail: 'สวัสดิการเด็ก ผู้สูงอายุ คนพิการ และครอบครัว',
+    title: 'สิทธิสวัสดิการสังคม กระทรวง พม.',
+    eligibility: 'เด็ก ผู้สูงอายุ คนพิการ ผู้มีรายได้น้อย หรือผู้ประสบปัญหาทางสังคมที่ผ่านเกณฑ์ของแต่ละโครงการ',
+    owner: 'กระทรวงการพัฒนาสังคมและความมั่นคงของมนุษย์ (พม.)',
+    benefits: [
+      'เบี้ยความพิการและบริการช่วยเหลือสำหรับผู้มีบัตรประจำตัวคนพิการที่ขึ้นทะเบียนแล้ว',
+      'บริการฟื้นฟู พัฒนาศักยภาพ ฝึกอาชีพ และกู้ยืมทุนประกอบอาชีพสำหรับคนพิการตามเกณฑ์',
+      'เบี้ยยังชีพผู้สูงอายุสำหรับผู้มีคุณสมบัติและลงทะเบียนกับองค์กรปกครองส่วนท้องถิ่น',
+      'เงินอุดหนุนเพื่อการเลี้ยงดูเด็กแรกเกิดสำหรับครัวเรือนที่ผ่านเกณฑ์โครงการ',
+      'การคุ้มครองเด็ก ครอบครัว ผู้สูงอายุ และผู้ถูกกระทำความรุนแรง พร้อมประสานที่พักฉุกเฉิน',
+      'การช่วยเหลือผู้ประสบปัญหาทางสังคมเป็นรายกรณี หลังนักสังคมสงเคราะห์ประเมินข้อเท็จจริง',
+    ],
+    limitations: [
+      'แต่ละสวัสดิการเป็นคนละโครงการ ไม่ได้เกิดสิทธิพร้อมกันทั้งหมด',
+      'ต้องตรวจคุณสมบัติ อายุ รายได้ ทะเบียนบ้าน บัตรคนพิการ หรือเอกสารเฉพาะของโครงการ',
+      'บางรายการต้องลงทะเบียนล่วงหน้า ผ่านการประเมิน และขึ้นอยู่กับรอบงบประมาณหรือพื้นที่',
+      'สวัสดิการของ พม. ไม่ใช่สิทธิรักษาพยาบาลหลัก ต้องใช้ร่วมกับสิทธิสุขภาพที่มีอยู่',
+    ],
+    hotline: 'ศูนย์ช่วยเหลือสังคม พม. 1300',
+    sourceLabel: 'พม. Connect — ข้อมูลสวัสดิการและบริการ',
+    sourceUrl: 'https://connect.m-society.go.th/homepage/',
+  },
+  {
+    code: 'OIC',
+    agency: 'คปภ.',
+    detail: 'ความคุ้มครองตามกรมธรรม์ประกันภัย',
+    title: 'สิทธิผู้เอาประกันภัยภายใต้การกำกับของ คปภ.',
+    eligibility: 'ผู้เอาประกันภัย ผู้รับประโยชน์ หรือผู้มีสิทธิเรียกร้องตามกรมธรรม์ที่ยังมีผลบังคับและเข้าเงื่อนไขความคุ้มครอง',
+    owner: 'สำนักงานคณะกรรมการกำกับและส่งเสริมการประกอบธุรกิจประกันภัย (คปภ.)',
+    benefits: [
+      'ค่ารักษาพยาบาลผู้ป่วยนอกหรือผู้ป่วยในตามวงเงินและเงื่อนไขที่ระบุในกรมธรรม์',
+      'ความคุ้มครองอุบัติเหตุ โรคร้ายแรง ทุพพลภาพ หรือการเสียชีวิตตามสัญญา',
+      'บริการไม่ต้องสำรองจ่ายในสถานพยาบาลเครือข่าย เมื่อกรมธรรม์และแผนรองรับ',
+      'ยื่นเคลมสินไหม รับเงินชดเชย หรือรับผลประโยชน์ครบสัญญาตามประเภทกรมธรรม์',
+      'ขอคำปรึกษา ร้องเรียน และเข้าสู่กระบวนการไกล่เกลี่ยข้อพิพาทด้านประกันภัย',
+      'ตรวจสอบข้อมูลกรมธรรม์และสถานะตัวแทนหรือนายหน้าผ่านบริการของ คปภ.',
+    ],
+    limitations: [
+      'คปภ. เป็นหน่วยงานกำกับ ไม่ได้ชำระค่ารักษาแทนบริษัทประกันภัยโดยตรง',
+      'ความคุ้มครองจริงยึดข้อกำหนด ข้อยกเว้น ระยะรอคอย วงเงิน และสถานะเบี้ยของแต่ละกรมธรรม์',
+      'โรคที่เป็นมาก่อน การรักษานอกเครือข่าย หรือบริการที่ไม่จำเป็นทางการแพทย์อาจไม่คุ้มครอง',
+      'ควรขออนุมัติก่อนรักษาหรือสอบถามบริษัทประกันเมื่อเป็นการรักษาที่มีค่าใช้จ่ายสูง',
+    ],
+    hotline: 'สายด่วนประกันภัย คปภ. 1186',
+    sourceLabel: 'สำนักงาน คปภ.',
+    sourceUrl: 'https://www.oic.or.th/',
+  },
+  {
+    code: 'CGD',
+    agency: 'ข้าราชการ',
+    detail: 'สวัสดิการรักษาพยาบาลกรมบัญชีกลาง',
+    title: 'สวัสดิการรักษาพยาบาลข้าราชการ',
+    eligibility: 'ข้าราชการ ลูกจ้างประจำ ผู้รับเบี้ยหวัดหรือบำนาญ และบุคคลในครอบครัวที่มีชื่อในฐานข้อมูลบุคลากรภาครัฐตามกฎหมาย',
+    owner: 'กรมบัญชีกลาง กระทรวงการคลัง',
+    benefits: [
+      'ตรวจรักษาโรคทั่วไป โรคเรื้อรัง ผู้ป่วยนอก และผู้ป่วยในในสถานพยาบาลของรัฐ',
+      'ใช้ระบบเบิกจ่ายตรงด้วยบัตรประชาชน ณ สถานพยาบาลที่รองรับ โดยไม่ต้องสำรองจ่ายในรายการที่เบิกได้',
+      'ครอบคลุมผู้มีสิทธิและบุคคลในครอบครัวที่ลงทะเบียนถูกต้องในฐานข้อมูลบุคลากรภาครัฐ',
+      'เบิกค่ายา เวชภัณฑ์ อวัยวะเทียม อุปกรณ์ และบริการทางการแพทย์ตามอัตราและหลักเกณฑ์',
+      'เบิกค่าห้อง ค่าอาหาร และค่ารักษาผู้ป่วยในตามเพดานที่กรมบัญชีกลางกำหนด',
+      'ใช้บริการโรงพยาบาลเอกชนเฉพาะกรณีหรือโครงการที่กรมบัญชีกลางกำหนด',
+    ],
+    limitations: [
+      'ต้องมีสถานะผู้มีสิทธิในฐานข้อมูลบุคลากรภาครัฐและยืนยันตัวตนก่อนใช้เบิกจ่ายตรง',
+      'รายการนอกบัญชีหรือเกินอัตราเบิก เช่น ค่าห้องพิเศษส่วนเกิน อาจต้องชำระเอง',
+      'โรงพยาบาลเอกชนเบิกได้เฉพาะกรณีฉุกเฉินหรือโครงการที่เข้าร่วมตามหลักเกณฑ์',
+      'ยาบางกลุ่มและการรักษาค่าใช้จ่ายสูงต้องเป็นไปตามข้อบ่งชี้หรือขออนุมัติตามระบบ',
+    ],
+    hotline: 'กรมบัญชีกลาง 0 2270 6400',
+    sourceLabel: 'ข้อมูลสวัสดิการรักษาพยาบาล กรมบัญชีกลาง',
+    sourceUrl: 'https://www.cgd.go.th/cs/internet/internet/%E0%B8%AA%E0%B8%A7%E0%B8%B1%E0%B8%AA%E0%B8%94%E0%B8%B4%E0%B8%81%E0%B8%B2%E0%B8%A3%E0%B8%9E%E0%B8%A2%E0%B8%B2%E0%B8%9A%E0%B8%B2%E0%B8%A5.html?page_locale=th_TH',
+  },
 ];
 
 const loadingStages = [
@@ -135,6 +234,11 @@ export default function AssessmentPage() {
   const [documentAssessment, setDocumentAssessment] = useState<AssessmentResult | null>(null);
   const [documentAssessmentLoading, setDocumentAssessmentLoading] = useState(false);
   const [documentAssessmentError, setDocumentAssessmentError] = useState('');
+  const [documentInputMode, setDocumentInputMode] = useState<DocumentInputMode>('manual');
+  const [selectedGatewayCode, setSelectedGatewayCode] = useState<GatewayCode | null>(null);
+  const selectedGateway = gateways.find((gateway) => gateway.code === selectedGatewayCode) ?? null;
+  const showIdentityFields = documentInputMode === 'manual' || Boolean(medicalDocument);
+  const benefitGuideRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     if (!loading) {
@@ -155,12 +259,21 @@ export default function AssessmentPage() {
     if (cachedDocument) {
       const extracted = cachedDocument.result.extracted_data ?? {};
       const names = documentNameParts(extracted);
+      setDocumentInputMode('upload');
       setMedicalDocument(cachedDocument);
       setFirstName(names.firstName);
       setLastName(names.lastName);
       setFormData((current) => mergeDocumentData(current, extracted));
     }
   }, []);
+
+  useEffect(() => {
+    if (!selectedGateway) return;
+
+    window.requestAnimationFrame(() => {
+      benefitGuideRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }, [selectedGateway]);
 
   const requestLocation = () => {
     if (!navigator.geolocation) {
@@ -228,6 +341,7 @@ export default function AssessmentPage() {
   };
 
   const useDemoData = () => {
+    setDocumentInputMode('manual');
     setFormData({
       ...emptyForm,
       citizen_id: '1111111111111',
@@ -243,6 +357,7 @@ export default function AssessmentPage() {
   };
 
   const useCivilServantDemoData = () => {
+    setDocumentInputMode('manual');
     setFormData({
       ...emptyForm,
       citizen_id: '1111111111117',
@@ -275,6 +390,7 @@ export default function AssessmentPage() {
       const names = documentNameParts(extracted);
       const nextForm = mergeDocumentData(formData, extracted);
       const document = { fileName: file.name, result };
+      setDocumentInputMode('upload');
       setFirstName(names.firstName);
       setLastName(names.lastName);
       setFormData(nextForm);
@@ -288,6 +404,15 @@ export default function AssessmentPage() {
       setDocumentError(scanError instanceof Error ? scanError.message : 'ไม่สามารถอ่านใบรับรองแพทย์ได้');
     } finally {
       setDocumentLoading(false);
+    }
+  };
+
+  const selectDocumentInputMode = (mode: DocumentInputMode) => {
+    setDocumentInputMode(mode);
+    setDocumentError('');
+    if (mode === 'manual') {
+      setMedicalDocument(null);
+      setDocumentReviewText('');
     }
   };
 
@@ -355,32 +480,32 @@ export default function AssessmentPage() {
   return (
     <div className="apple-page relative min-h-screen overflow-x-clip">
       {loading && (
-        <div role="status" aria-live="polite" className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-[#072b77]/75 px-4">
-          <div className="pointer-events-none absolute -left-24 top-1/4 size-80 rounded-full bg-[#00f2f6]/35 blur-3xl" />
-          <div className="pointer-events-none absolute -right-24 bottom-1/4 size-80 rounded-full bg-cyan-400/30 blur-3xl" />
+        <div role="status" aria-live="polite" className="fixed inset-0 z-100 flex items-center justify-center overflow-hidden bg-[#072b77]/75 px-4">
+          <div className="pointer-events-none absolute -left-24 top-1/4 size-80 rounded-full bg-cyan-500 blur-3xl" />
+          <div className="pointer-events-none absolute -right-24 bottom-1/4 size-80 rounded-full bg-cyan-400 blur-3xl" />
 
           <div className="relative w-full max-w-md overflow-hidden rounded-[28px] bg-white p-6 text-center sm:p-8">
-            <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent" />
-            <div className="pointer-events-none absolute -right-16 -top-20 size-52 rounded-full bg-[#00f2f6]/35 blur-3xl" />
+            <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-linear-to-r from-transparent via-white to-transparent" />
+            <div className="pointer-events-none absolute -right-16 -top-20 size-52 rounded-full bg-cyan-500/35 blur-3xl" />
 
             <div className="relative mx-auto size-24">
-              <div className="absolute inset-0 rounded-full border border-[#dff9ff] bg-[#f2fdff]" />
-              <div className="absolute inset-1 animate-spin rounded-full border-[3px] border-cyan-100 border-r-[#00f2f6] border-t-cyan-600" />
-              <div className="absolute inset-3 animate-[spin_2.4s_linear_infinite_reverse] rounded-full border border-dashed border-[#1a7bf0]/70" />
+              <div className="absolute inset-0 rounded-full border border-cyan-100 bg-cyan-50" />
+              <div className="absolute inset-1 animate-spin rounded-full border-[3px] border-cyan-100 border-r-cyan-500 border-t-cyan-600" />
+              <div className="absolute inset-3 animate-[spin_2.4s_linear_infinite_reverse] rounded-full border border-dashed border-cyan-600/70" />
               <Database className="absolute inset-0 m-auto size-7 text-cyan-800" />
             </div>
 
-            <p className="mt-5 text-[11px] font-black uppercase tracking-[0.2em] text-cyan-700">กำลังประมวลผล</p>
+            <p className="mt-5 text-sm font-black uppercase tracking-[0.2em] text-cyan-700">กำลังประมวลผล</p>
             <h2 className="mt-2 text-xl font-black text-slate-950">{loadingStages[loadingStage]}</h2>
-            <p className="mx-auto mt-2 max-w-sm text-xs leading-relaxed text-slate-500">เก็บข้อมูลแบบ JSON ไว้ชั่วคราวเฉพาะเซสชันของแท็บนี้ และปกปิดเลขบัตรเมื่อส่งบริบทให้ AI</p>
+            <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-slate-500">เก็บข้อมูลแบบ JSON ไว้ชั่วคราวเฉพาะเซสชันของแท็บนี้ และปกปิดเลขบัตรเมื่อส่งบริบทให้ AI</p>
 
             <div className="mt-6 h-2 overflow-hidden rounded-full border border-white bg-slate-200/55 p-0.5 shadow-inner">
-              <div className="h-full rounded-full bg-gradient-to-r from-cyan-700 via-[#1a7bf0] to-[#00f2f6] shadow-[0_0_18px_rgba(0,242,246,0.7)] transition-all duration-500" style={{ width: `${((loadingStage + 1) / loadingStages.length) * 100}%` }} />
+              <div className="h-full rounded-full bg-linear-to-r from-cyan-700 via-cyan-600 to-cyan-500 shadow-[0_0_18px_rgba(0,242,246,0.7)] transition-all duration-500" style={{ width: `${((loadingStage + 1) / loadingStages.length) * 100}%` }} />
             </div>
 
             <div className="mt-4 grid grid-cols-4 gap-2">
               {gateways.map((gateway, index) => (
-                <div key={gateway.code} className={`flex items-center justify-center gap-1 rounded-xl border px-1 py-2 text-[10px] font-black transition ${index <= loadingStage ? 'border-cyan-200 bg-cyan-50/90 text-cyan-800 shadow-sm' : 'border-white/80 bg-white/35 text-slate-400'}`}>
+                <div key={gateway.code} className={`flex items-center justify-center gap-1 rounded-xl border px-1 py-2 text-sm font-black transition ${index <= loadingStage ? 'border-cyan-200 bg-cyan-50/90 text-cyan-800 shadow-sm' : 'border-white/80 bg-white/35 text-slate-400'}`}>
                   {index <= loadingStage ? <CheckCircle2 className="size-3" /> : <span className="size-1.5 rounded-full bg-slate-300" />}
                   <span>{gateway.code}</span>
                 </div>
@@ -398,12 +523,12 @@ export default function AssessmentPage() {
             <span className="text-[#115af2]">เห็นสิทธิของคุณในที่เดียว</span>
           </h1>
           <p className="apple-subhead mx-auto mt-5 max-w-2xl text-base sm:text-xl">
-            CarePulse จำลองการตรวจหลายหน่วยงานผ่านระบบเชื่อมต่อกลาง แล้วสรุปสิทธิ กรมธรรม์ และโรงพยาบาลใกล้คุณให้เข้าใจง่าย
+            ตรวจสอบสิทธิประโยชน์ทางการแพทย์ของคุณ ทั้งบัตรทอง ประกันสังคม สวัสดิการข้าราชการและกรมธรรม์ พร้อมประมาณค่ารักษาพยาบาลล่วงหน้า เพื่อวางแผนการเงินด้านสุขภาพของคุณและครอบครัวอย่างมั่นใจ
           </p>
         </div>
 
-        <div className="mx-auto mt-14 grid w-full border-y border-black/[0.09] lg:grid-cols-[1.08fr_.92fr]">
-          <form onSubmit={handleSubmit} className="py-9 lg:border-r lg:border-black/[0.09] lg:pr-12 sm:py-12">
+        <div className="mx-auto mt-14 grid w-full border-y border-black/9 lg:grid-cols-[1.08fr_.92fr]">
+          <form onSubmit={handleSubmit} className="py-9 lg:border-r lg:border-black/9 lg:pr-12 sm:py-12">
             <div className="flex items-start justify-between gap-4">
               <div className="flex items-center gap-3">
                 <span className="flex size-10 items-center justify-center rounded-full bg-[#e8f1ff] text-[#115af2]"><UserRound className="size-5" /></span>
@@ -413,67 +538,68 @@ export default function AssessmentPage() {
                 </div>
               </div>
               <div className="flex shrink-0 flex-col items-end gap-1 text-right">
-                <button type="button" onClick={useDemoData} className="text-xs font-semibold text-[#115af2] hover:underline">
-                  ใช้ข้อมูลตัวอย่าง
-                </button>
-                <button type="button" onClick={useCivilServantDemoData} className="text-xs font-semibold text-[#115af2] hover:underline">
+                <button type="button" onClick={useCivilServantDemoData} className="text-sm cursor-pointer font-semibold text-[#115af2] hover:underline">
                   ตัวอย่างสิทธิข้าราชการ
+                </button>
+                <button type="button" onClick={useDemoData} className="text-sm cursor-pointer font-semibold text-[#115af2] hover:underline">
+                  ตัวอย่างสิทธิประชาชนทั่วไป
                 </button>
               </div>
             </div>
 
             <div className="mt-6 space-y-5">
-              <div className="rounded-2xl border border-[#115af2]/20 bg-[#f7faff] p-4">
-                <div className="flex items-start gap-3">
-                  <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#e8f1ff] text-[#115af2]"><FileUp className="size-5" /></span>
-                  <div>
-                    <p className="text-sm font-semibold text-[#1d1d1f]">มีใบรับรองแพทย์หรือไม่</p>
-                    <p className="mt-1 text-xs leading-relaxed text-[#6e6e73]">แนบเอกสารเพื่อให้ AI อ่านและเติมชื่อ–นามสกุลลงในแบบฟอร์ม แล้วตรวจแก้ก่อนดำเนินการต่อ</p>
-                  </div>
+              <div>
+                <p className="mb-2 text-sm font-semibold text-[#1d1d1f]">เลือกวิธีกรอกข้อมูล</p>
+                <div role="radiogroup" aria-label="เลือกวิธีกรอกข้อมูล" className="grid grid-cols-2 gap-1 rounded-2xl bg-[#f2f4f7] p-1">
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={documentInputMode === 'manual'}
+                    disabled={documentLoading}
+                    onClick={() => selectDocumentInputMode('manual')}
+                    className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#115af2]/15 disabled:cursor-wait disabled:opacity-60 ${documentInputMode === 'manual' ? 'bg-white text-[#115af2] shadow-sm' : 'text-[#667085] hover:bg-white/60 hover:text-[#344054]'}`}
+                  >
+                    <UserRound className="size-4" />
+                    พิมพ์ข้อมูลเอง
+                  </button>
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={documentInputMode === 'upload'}
+                    disabled={documentLoading}
+                    onClick={() => selectDocumentInputMode('upload')}
+                    className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#115af2]/15 disabled:cursor-wait disabled:opacity-60 ${documentInputMode === 'upload' ? 'bg-white text-[#115af2] shadow-sm' : 'text-[#667085] hover:bg-white/60 hover:text-[#344054]'}`}
+                  >
+                    <FileUp className="size-4" />
+                    ใช้ใบรับรองแพทย์
+                  </button>
                 </div>
-
-                <label className={`mt-4 flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold transition ${documentLoading ? 'cursor-wait bg-[#dfeeff] text-[#115af2]' : 'bg-[#115af2] text-white hover:bg-[#1a7bf0]'}`}>
-                  <input type="file" accept="image/*,.pdf" disabled={documentLoading} onChange={handleMedicalDocument} className="hidden" />
-                  {documentLoading ? <Loader2 className="size-4 animate-spin" /> : medicalDocument ? <FileCheck2 className="size-4" /> : <FileUp className="size-4" />}
-                  {documentLoading ? 'AI กำลังอ่านเอกสาร...' : medicalDocument ? 'เปลี่ยนใบรับรองแพทย์' : 'แนบใบรับรองแพทย์'}
-                </label>
-
-                {/* {medicalDocument && (
-                  <div className="mt-3 rounded-xl bg-emerald-50 p-3 text-xs text-emerald-950">
-                    <strong className="flex items-center gap-1.5"><FileCheck2 className="size-4" /> เติมข้อมูลจาก {medicalDocument.fileName} แล้ว</strong>
-                    <span className="mt-1 block leading-relaxed">ความมั่นใจในการอ่านข้อความ {Math.round(medicalDocument.result.ocr_confidence * 100)}% กรุณาตรวจชื่อ–นามสกุลด้านล่างอีกครั้ง</span>
-                    <label className="mt-3 block">
-                      <span className="font-semibold">ข้อความที่ AI อ่านได้</span>
-                      <textarea
-                        rows={4}
-                        value={documentReviewText}
-                        onChange={(event) => setDocumentReviewText(event.target.value)}
-                        placeholder="หาก AI อ่านชื่อไม่ออก สามารถพิมพ์บรรทัดชื่อผู้ป่วยจากใบรับรองแพทย์ได้"
-                        className="mt-1.5 w-full resize-y rounded-xl border border-emerald-200 bg-white p-3 text-sm leading-relaxed text-slate-900 outline-none focus:border-[#115af2] focus:ring-4 focus:ring-[#115af2]/10"
-                      />
-                    </label>
-                    <button
-                      type="button"
-                      disabled={documentReviewing}
-                      onClick={applyReviewedDocumentText}
-                      className="mt-2 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-full bg-emerald-700 px-4 text-xs font-bold text-white hover:bg-emerald-800 disabled:cursor-wait disabled:opacity-60"
-                    >
-                      {documentReviewing ? <Loader2 className="size-4 animate-spin" /> : <FileCheck2 className="size-4" />}
-                      {documentReviewing ? 'กำลังอ่านชื่อใหม่...' : 'นำข้อความนี้มาเติมชื่อใหม่'}
-                    </button>
-                  </div>
-                )} */}
-                {documentError && <p role="alert" className="mt-3 text-xs font-semibold text-rose-700">{documentError}</p>}
-                <p className="mt-3 text-[11px] leading-relaxed text-amber-700">ระบบสาธิตควรใช้เอกสารตัวอย่างเท่านั้น ข้อมูลจาก AI อาจมีข้อผิดพลาด โปรดตรวจสอบซ้ำ</p>
+                {documentInputMode === 'manual' && (
+                  <p className="mt-2 text-sm leading-relaxed text-[#6e6e73]">กรอกชื่อ–นามสกุลและเลขบัตรประชาชนในช่องด้านล่าง</p>
+                )}
               </div>
 
-              {medicalDocument && (
-                <p className="flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-semibold text-emerald-900">
-                  <FileCheck2 className="size-4 shrink-0" />
-                  AI อ่านใบรับรอง {medicalDocument.fileName} แล้ว (มั่นใจ {Math.round(medicalDocument.result.ocr_confidence * 100)}%) — ผลสิทธิและอุปกรณ์จะแสดงหลังกดค้นหาสิทธิ
-                </p>
+              {documentInputMode === 'upload' && !medicalDocument && (
+                <div>
+                  <label className={`relative flex min-h-40 w-full cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed px-5 py-6 text-center transition focus-within:ring-4 focus-within:ring-[#115af2]/10 ${documentLoading ? 'cursor-wait border-cyan-900 bg-cyan-50 text-[#115af2]' : 'border-[#115af2]/35 bg-[#f7faff] hover:border-cyan-800 hover:bg-white'}`}>
+                    <input type="file" accept="image/*,.pdf" disabled={documentLoading} onChange={handleMedicalDocument} className="absolute inset-0 cursor-pointer opacity-0 disabled:cursor-wait" />
+                    <span className="flex size-12 items-center justify-center rounded-full bg-white text-[#115af2] shadow-sm">
+                      {documentLoading ? <Loader2 className="size-6 animate-spin" /> : <FileUp className="size-6" />}
+                    </span>
+                    <span className="mt-3 text-base font-semibold text-[#1d1d1f]">
+                      {documentLoading ? 'AI กำลังอ่านเอกสาร...' : 'คลิกเพื่อแนบใบรับรองแพทย์'}
+                    </span>
+                    <span className="mt-1 text-sm leading-relaxed text-[#6e6e73]">
+                      {documentLoading ? 'กรุณารอสักครู่ ระบบจะเติมข้อมูลให้อัตโนมัติ' : 'รองรับไฟล์ JPG, PNG หรือ PDF ขนาดไม่เกิน 10 MB'}
+                    </span>
+                  </label>
+
+                  {documentError && <p role="alert" className="mt-3 text-xs font-semibold text-rose-700">{documentError}</p>}
+                  <p className="mt-3 text-xs leading-relaxed text-red-600">* ระบบสาธิตควรใช้เอกสารตัวอย่างเท่านั้น ข้อมูลจาก AI อาจมีข้อผิดพลาด โปรดตรวจสอบซ้ำ</p>
+                </div>
               )}
 
+              {showIdentityFields && <>
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="block space-y-2">
                   <span className="text-sm font-semibold text-[#1d1d1f]">ชื่อ</span>
@@ -489,7 +615,7 @@ export default function AssessmentPage() {
                       setFirstName(value);
                       setFormData({ ...formData, full_name: [value, lastName].filter(Boolean).join(' ') });
                     }}
-                    className="h-13 w-full rounded-xl border border-black/[0.12] bg-white px-4 text-base font-medium text-[#1d1d1f] outline-none transition focus:border-[#115af2] focus:ring-4 focus:ring-[#115af2]/10"
+                    className="h-13 w-full rounded-xl border border-black/12 bg-white px-4 text-base font-medium text-[#1d1d1f] outline-none transition focus:border-[#115af2] focus:ring-4 focus:ring-[#115af2]/10"
                   />
                 </label>
 
@@ -507,7 +633,7 @@ export default function AssessmentPage() {
                       setLastName(value);
                       setFormData({ ...formData, full_name: [firstName, value].filter(Boolean).join(' ') });
                     }}
-                    className="h-13 w-full rounded-xl border border-black/[0.12] bg-white px-4 text-base font-medium text-[#1d1d1f] outline-none transition focus:border-[#115af2] focus:ring-4 focus:ring-[#115af2]/10"
+                    className="h-13 w-full rounded-xl border border-black/12 bg-white px-4 text-base font-medium text-[#1d1d1f] outline-none transition focus:border-[#115af2] focus:ring-4 focus:ring-[#115af2]/10"
                   />
                 </label>
               </div>
@@ -526,13 +652,13 @@ export default function AssessmentPage() {
                     placeholder="X-XXXX-XXXXX-XX-X"
                     value={formData.citizen_id ?? ''}
                     onChange={(event) => setFormData({ ...formData, citizen_id: event.target.value.replace(/\D/g, '').slice(0, 13) })}
-                    className="h-13 w-full rounded-xl border border-black/[0.12] bg-white pl-4 pr-12 text-left font-mono text-base font-semibold tracking-[0.08em] text-[#1d1d1f] outline-none transition focus:border-[#115af2] focus:ring-4 focus:ring-[#115af2]/10"
+                    className="h-13 w-full rounded-xl border border-black/12 bg-white pl-4 pr-12 text-left font-mono text-base font-medium tracking-[0.08em] text-[#1d1d1f] outline-none transition placeholder:font-normal focus:border-[#115af2] focus:ring-4 focus:ring-[#115af2]/10"
                   />
                 </div>
-                <span className="block text-[11px] text-amber-700">ระบบสาธิตนี้ให้ใช้เลขตัวอย่างเท่านั้น ไม่ใช้เลขบัตรจริง</span>
+                <span className="block text-sm text-red-600">* ระบบสาธิตนี้ให้ใช้เลขตัวอย่างเท่านั้น ไม่ใช้เลขบัตรจริง</span>
               </label>
 
-              <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-[#115af2]/20 bg-[#eef5ff] p-4">
+              <label className="flex cursor-pointer items-start gap-3 py-1">
                 <input
                   type="checkbox"
                   required
@@ -540,7 +666,7 @@ export default function AssessmentPage() {
                   onChange={(event) => handleConsentChange(event.target.checked)}
                   className="mt-0.5 size-5 rounded border-cyan-300 text-cyan-600 focus:ring-cyan-500"
                 />
-                <span className="text-xs leading-relaxed text-[#424245]">
+                <span className="text-sm leading-relaxed text-[#424245]">
                   <strong className="block text-sm text-[#072b77]">ยินยอมให้ตรวจสอบสิทธิและใช้ตำแหน่ง</strong>
                   เมื่อติ๊ก ระบบจะขอใช้ตำแหน่งทันทีเพื่อเรียงโรงพยาบาลใกล้เคียงหลังตรวจสิทธิ พิกัดและผลสิทธิจะเก็บชั่วคราวเฉพาะแท็บนี้ ไม่ส่งไปบันทึกในฐานข้อมูล และเลือก “ไม่อนุญาต” ตำแหน่งได้โดยยังตรวจสิทธิต่อได้ตามปกติ
                   {locationStatus === 'loading' && <span role="status" className="mt-2 flex items-center gap-2 font-semibold text-[#115af2]"><Loader2 className="size-4 animate-spin" /> กำลังขอใช้ตำแหน่ง...</span>}
@@ -548,45 +674,125 @@ export default function AssessmentPage() {
                   {(locationStatus === 'denied' || locationStatus === 'error') && <span role="alert" className="mt-2 block font-semibold text-amber-800">{locationStatus === 'denied' ? 'ยังไม่ได้รับอนุญาตให้ใช้ตำแหน่ง แต่ตรวจสิทธิต่อได้ตามปกติ' : 'ไม่สามารถอ่านตำแหน่งได้ แต่ตรวจสิทธิต่อได้ตามปกติ'}</span>}
                 </span>
               </label>
+              </>}
             </div>
 
-            {error && <div role="alert" className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm font-semibold text-rose-900">{error}</div>}
+            {showIdentityFields && <>
+              {error && <div role="alert" className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm font-semibold text-rose-900">{error}</div>}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="liquid-btn-primary mt-5 inline-flex h-12 w-full items-center justify-center gap-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {loading ? <><Loader2 className="size-5 animate-spin" /> กำลังตรวจหลายแหล่งข้อมูล...</> : <><Search className="size-5" /> ค้นหาสิทธิของฉัน</>}
-            </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="liquid-btn-primary mt-5 inline-flex h-12 w-full items-center justify-center gap-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {loading ? <><Loader2 className="size-5 animate-spin" /> กำลังตรวจหลายแหล่งข้อมูล...</> : <><Search className="size-5" /> ค้นหาสิทธิของฉัน</>}
+              </button>
+            </>}
           </form>
 
-          <section className="border-t border-black/[0.09] py-9 lg:border-0 lg:pl-12 sm:py-12">
-            <p className="text-xs font-semibold text-[#115af2]">หนึ่งคำขอ หลายหน่วยงาน</p>
+          <section className="border-t border-black/9 py-9 lg:border-0 lg:pl-12 sm:py-12">
+            <p className="text-sm font-semibold text-[#115af2]">หนึ่งคำขอ หลายหน่วยงาน</p>
             <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[#1d1d1f]">เห็นภาพรวมความคุ้มครอง<br />โดยไม่ต้องค้นหาทีละระบบ</h2>
             <p className="mt-3 text-sm leading-relaxed text-[#6e6e73]">ระบบจริงจะส่งคำขอไปยังหน่วยงานเจ้าของข้อมูลตามความยินยอมของประชาชน</p>
 
-            <div className="mt-5 space-y-3">
+            <div className="mt-5 space-y-2" aria-label="หน่วยงานที่ตรวจสอบสิทธิ">
               {gateways.map((gateway, index) => (
-                <div key={gateway.code} className="flex items-center gap-3 border-b border-black/[0.08] py-3.5 last:border-0">
-                  <span className={`flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${loading ? 'animate-pulse bg-[#115af2] text-white' : 'bg-[#e8f1ff] text-[#115af2]'}`}>
+                <button
+                  key={gateway.code}
+                  type="button"
+                  onClick={() => setSelectedGatewayCode((current) => current === gateway.code ? null : gateway.code)}
+                  aria-expanded={selectedGatewayCode === gateway.code}
+                  aria-controls="gateway-benefit-panel"
+                  className={`group flex w-full items-center gap-3 rounded-2xl border px-3 py-3 text-left transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#115af2]/10 ${selectedGatewayCode === gateway.code ? 'border-cyan-600 bg-cyan-600' : 'border-[#115af2]/15 bg-white hover:border-cyan-600 hover:bg-white'}`}
+                >
+                  <span className={`flex size-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${loading ? 'animate-pulse bg-[#115af2] text-white' : selectedGatewayCode === gateway.code ? 'bg-white text-[#115af2]' : 'bg-[#e8f1ff] text-[#115af2]'}`}>
                     {loading ? index + 1 : <CheckCircle2 className="size-4" />}
                   </span>
-                  <span className="min-w-0">
-                    <strong className="block text-sm font-semibold text-[#1d1d1f]">{gateway.agency}</strong>
-                    <span className="block truncate text-xs text-[#6e6e73]">{gateway.detail}</span>
+                  <span className="min-w-0 flex-1">
+                    <strong className={`block text-sm font-semibold ${selectedGatewayCode === gateway.code ? 'text-white' : 'text-[#1d1d1f]'}`}>{gateway.agency}</strong>
+                    <span className={`block truncate text-sm ${selectedGatewayCode === gateway.code ? 'text-cyan-50' : 'text-[#6e6e73]'}`}>{gateway.detail}</span>
                   </span>
-                </div>
+                  <ChevronRight className={`size-4 shrink-0 transition-transform ${selectedGatewayCode === gateway.code ? 'rotate-90 text-white' : 'text-[#6e6e73] group-hover:translate-x-0.5 group-hover:text-cyan-700'}`} aria-hidden="true" />
+                </button>
               ))}
             </div>
 
-            <div className="mt-5 border-t border-black/[0.08] pt-5 text-xs leading-relaxed text-[#6e6e73]">
-              หากอนุญาตตำแหน่งระหว่างกรอกข้อมูล หน้าแสดงผลจะจัดอันดับโรงพยาบาลใกล้เคียงให้อัตโนมัติ โดยการปฏิเสธตำแหน่งไม่มีผลต่อการตรวจสิทธิ
+            <div className="mt-5 border-t border-black/8 pt-5 text-xs leading-relaxed text-[#6e6e73]">
+              กดชื่อหน่วยงานเพื่อดูเช็กลิสต์สิทธิที่ใช้ได้เมื่อผ่านเกณฑ์ หลังตรวจสอบแล้วหน้าแสดงผลจะสรุปสิทธิที่พบและจัดอันดับโรงพยาบาลใกล้เคียงให้
             </div>
           </section>
         </div>
 
-        <p className="mx-auto mt-6 max-w-3xl text-center text-[11px] leading-relaxed text-[#6e6e73]">
+        {selectedGateway && (
+          <section
+            ref={benefitGuideRef}
+            id="gateway-benefit-panel"
+            aria-labelledby="gateway-benefit-title"
+            className="mt-8 scroll-mt-24 overflow-hidden rounded-[28px] border border-[#dce3eb] bg-[#fffefa] shadow-[0_18px_55px_rgba(15,23,42,0.08)]"
+          >
+            <header className="flex items-start justify-between gap-4 border-b border-black/8 px-5 py-5 sm:px-8 sm:py-6">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-[#115af2]">{selectedGateway.agency} · เช็กลิสต์สิทธิที่อาจใช้ได้</p>
+                <h2 id="gateway-benefit-title" className="mt-1 text-xl font-bold tracking-tight text-[#101828] sm:text-2xl">{selectedGateway.title}</h2>
+                <p className="mt-2 max-w-4xl text-sm leading-relaxed text-[#667085]"><strong className="font-semibold text-[#344054]">ผู้มีสิทธิ:</strong> {selectedGateway.eligibility}</p>
+                <p className="mt-1 text-sm text-[#667085]"><strong className="font-semibold text-[#344054]">หน่วยงานดูแล:</strong> {selectedGateway.owner}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedGatewayCode(null)}
+                className="inline-flex min-h-10 shrink-0 items-center gap-1 rounded-full border border-black/8 bg-white px-3 text-sm font-semibold text-[#475467] transition hover:bg-[#f2f4f7] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#115af2]/15"
+                aria-label="ย่อตารางรายละเอียดสิทธิ"
+              >
+                ย่อ<ChevronRight className="size-4 -rotate-90" />
+              </button>
+            </header>
+
+            <div className="grid gap-8 px-5 py-6 sm:px-8 sm:py-8 lg:grid-cols-2 lg:gap-12">
+              <div>
+                <h3 className="flex items-center gap-2 text-lg font-bold text-[#101828]">
+                  <BadgeCheck className="size-6 text-[#115af2]" aria-hidden="true" />
+                  สิทธิประโยชน์ที่ใช้ได้เมื่อผ่านเกณฑ์
+                </h3>
+                <ul className="mt-5 space-y-4">
+                  {selectedGateway.benefits.map((benefit) => (
+                    <li key={benefit} className="flex items-start gap-3 text-sm leading-relaxed text-[#1d2939] sm:text-base">
+                      <BadgeCheck className="mt-0.5 size-5 shrink-0 text-[#115af2]" aria-hidden="true" />
+                      <span>{benefit}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div>
+                <h3 className="flex items-center gap-2 text-lg font-bold text-[#101828]">
+                  <AlertCircle className="size-6 text-amber-400" aria-hidden="true" />
+                  เงื่อนไขและข้อจำกัดที่ควรทราบ
+                </h3>
+                <ul className="mt-5 space-y-4">
+                  {selectedGateway.limitations.map((limitation) => (
+                    <li key={limitation} className="flex items-start gap-3 text-sm leading-relaxed text-[#667085] sm:text-base">
+                      <AlertCircle className="mt-0.5 size-5 shrink-0 text-amber-400" aria-hidden="true" />
+                      <span>{limitation}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="mt-7 rounded-2xl bg-[#f7faff] p-4 text-[#115af2] sm:p-5">
+                  <p className="flex items-center gap-2 text-sm font-bold sm:text-base"><Phone className="size-5 shrink-0" />{selectedGateway.hotline}</p>
+                  <a href={selectedGateway.sourceUrl} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-2 text-sm font-semibold underline text-shadow-[#115af2] underline-offset-4 hover:text-cyan-600">
+                    ตรวจสอบจาก {selectedGateway.sourceLabel}<ExternalLink className="size-4" />
+                  </a>
+                </div>
+
+                <p className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-relaxed text-amber-950">
+                  รายการนี้เป็นข้อมูลประกอบการตรวจสอบ ไม่ใช่การยืนยันสิทธิส่วนบุคคล สิทธิจริงขึ้นอยู่กับสถานะในฐานข้อมูล เอกสาร และเงื่อนไขล่าสุดของหน่วยงานเจ้าของสิทธิ
+                </p>
+              </div>
+            </div>
+          </section>
+        )}
+
+        <p className="mx-auto mt-6 max-w-3xl text-center text-sm leading-relaxed text-[#6e6e73]">
           ผลทั้งหมดเป็นข้อมูลสาธิตแนวคิดการเชื่อมภาครัฐ ยังไม่ใช่ข้อมูลบุคคลจริง กรุณายืนยันกับหน่วยงานเจ้าของข้อมูลก่อนใช้บริการ
         </p>
       </main>
