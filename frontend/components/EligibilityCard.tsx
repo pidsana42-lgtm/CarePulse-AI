@@ -1,16 +1,5 @@
 import React from 'react';
-import {
-  AlertCircle,
-  ArrowUpRight,
-  Building2,
-  CheckCircle2,
-  ClipboardList,
-  FileText,
-  Hospital,
-  Info,
-  PhoneCall,
-  Sparkles,
-} from 'lucide-react';
+import { AlertCircle, ArrowUpRight, Building2, CheckCircle2, ClipboardList, FileText, Hospital, Info, PhoneCall, Sparkles } from 'lucide-react';
 import { HealthcareRightDetail } from '@/types';
 
 interface EligibilityCardProps {
@@ -44,7 +33,7 @@ export default function EligibilityCard({ right, isPrimary = false }: Eligibilit
   const StatusIcon = status.icon;
 
   return (
-    <article className={`overflow-hidden border-t-2 ${isPrimary ? 'border-[#115af2]' : 'border-black/[0.12]'}`}>
+    <article className={`overflow-hidden border-t-2 ${isPrimary ? 'border-[#115af2]' : 'border-black/12'}`}>
       <div className="py-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-2">
@@ -75,7 +64,7 @@ export default function EligibilityCard({ right, isPrimary = false }: Eligibilit
         <p className="mt-4 text-sm font-medium leading-relaxed text-slate-600 sm:text-base">{right.coverage_summary}</p>
 
         {right.matching_reasons && right.matching_reasons.length > 0 && (
-          <section className="mt-5 border-t border-black/[0.1] pt-4">
+          <section className="mt-5 border-t border-black/1 pt-4">
             <h4 className="flex items-center gap-2 text-sm font-black text-cyan-950">
               <CheckCircle2 className="size-4 text-cyan-700" />
               เหตุผลที่ระบบจับคู่รายการนี้
@@ -109,7 +98,7 @@ export default function EligibilityCard({ right, isPrimary = false }: Eligibilit
         )}
 
         {right.eligible_equipment && right.eligible_equipment.length > 0 && (
-          <section className="mt-4 border-t border-black/[0.1] pt-4">
+          <section className="mt-4 border-t border-black/1 pt-4">
             <h4 className="text-sm font-black text-cyan-950">รายการที่เกี่ยวข้องกับข้อมูลของคุณ</h4>
             <ul className="mt-2 space-y-1.5 text-sm text-cyan-950">
               {right.eligible_equipment.map((item) => (
@@ -121,7 +110,7 @@ export default function EligibilityCard({ right, isPrimary = false }: Eligibilit
 
         <div className="mt-5 grid gap-4 lg:grid-cols-2">
           {right.required_documents && right.required_documents.length > 0 && (
-            <section className="border-t border-black/[0.1] pt-4">
+            <section className="border-t border-black/1 pt-4">
               <h4 className="flex items-center gap-2 text-sm font-black text-slate-900">
                 <FileText className="size-4 text-slate-600" /> เอกสารที่ควรเตรียม
               </h4>
@@ -134,7 +123,7 @@ export default function EligibilityCard({ right, isPrimary = false }: Eligibilit
           )}
 
           {right.application_steps && right.application_steps.length > 0 && (
-            <section className="border-t border-black/[0.1] pt-4">
+            <section className="border-t border-black/1 pt-4">
               <h4 className="flex items-center gap-2 text-sm font-black text-slate-900">
                 <ClipboardList className="size-4 text-slate-600" /> ขั้นตอนถัดไป
               </h4>
@@ -151,7 +140,7 @@ export default function EligibilityCard({ right, isPrimary = false }: Eligibilit
         </div>
       </div>
 
-      <div className="border-t border-black/[0.1] py-4">
+      <div className="border-t border-black/1 py-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1 text-xs text-slate-600">
             <p className="flex items-start gap-2"><Hospital className="mt-0.5 size-3.5 shrink-0" /><span><strong>จุดเริ่มต้น:</strong> {right.hospital_network}</span></p>

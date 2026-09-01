@@ -41,6 +41,12 @@ function schemeFromResult(result: AssessmentResult | null): SchemeId {
   return 'none';
 }
 
+function isPolicyUsable(policy: MockInsurancePolicy) {
+  if (policy.status !== 'ACTIVE') return false;
+  const expiry = new Date(`${policy.expiry_date}T23:59:59`);
+  return Number.isNaN(expiry.getTime()) || expiry.getTime() >= Date.now();
+}
+
 export default function ResultsPage() {
   const [result, setResult] = useState<AssessmentResult | null>(null);
   const [selectedCoverage, setSelectedCoverage] = useState<{ kind: 'government' } | { kind: 'policy'; policy: MockInsurancePolicy } | null>(null);
@@ -67,14 +73,39 @@ export default function ResultsPage() {
     };
   }, [selectedCoverage]);
 
-  const docDiagnoses = useMemo(() => {
-    if (!medicalDocument) return [];
+  const medicalOcrContext = useMemo(() => {
+    if (!medicalDocument) return null;
     const extracted = (medicalDocument.result.extracted_data ?? {}) as Record<string, unknown>;
     const certificateData = (extracted.certificate_data ?? {}) as Record<string, unknown>;
     const certDiag = Array.isArray(certificateData.diagnoses) ? certificateData.diagnoses : [];
     const extDiag = Array.isArray(extracted.diagnoses) ? extracted.diagnoses : [];
-    return Array.from(new Set([...certDiag, ...extDiag])).map(String).map((s) => s.trim()).filter(Boolean);
+    const detectedConditions = Array.isArray(extracted.detected_conditions) ? extracted.detected_conditions : [];
+    const symptoms = Array.isArray(certificateData.symptoms) ? certificateData.symptoms : [];
+    return {
+      fileName: medicalDocument.fileName,
+      ocrConfidence: medicalDocument.result.ocr_confidence,
+      diagnoses: Array.from(new Set([...certDiag, ...extDiag, ...detectedConditions])).map(String).map((value) => value.trim()).filter(Boolean),
+      symptoms: symptoms.map(String).map((value) => value.trim()).filter(Boolean),
+      recommendation: String(certificateData.recommendation ?? '').trim(),
+      detectedHospital: String(certificateData.hospital ?? extracted.detected_hospital ?? '').trim(),
+      aiClinicalSummary: String(extracted.ai_clinical_summary ?? '').trim(),
+    };
   }, [medicalDocument]);
+  const docDiagnoses = medicalOcrContext?.diagnoses ?? [];
+  const medicalBenefits = useMemo(() => {
+    const extracted = medicalDocument?.result.extracted_data ?? {};
+    const equipment = (Array.isArray(extracted.matched_equipment) ? extracted.matched_equipment : [])
+      .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object');
+    const reimbursableItems = result
+      ? Array.from(new Set([
+          ...result.primary_right.free_items,
+          ...result.additional_rights
+            .filter((right) => right.is_eligible)
+            .flatMap((right) => right.eligible_equipment ?? []),
+        ]))
+      : [];
+    return { equipment, reimbursableItems };
+  }, [medicalDocument, result]);
 
   if (!result) {
     return (
@@ -94,10 +125,17 @@ export default function ResultsPage() {
   }
 
   const registry = result.registry_response;
-  const policies = registry?.private_policies ?? [];
+  const policies = (registry?.private_policies ?? []).filter(isPolicyUsable);
+  const hasActiveGovernmentRight = Boolean(
+    registry?.entitlement.status === 'ACTIVE'
+    && result.primary_right.is_eligible
+    && result.primary_right.eligibility_status !== 'needs_review'
+    && result.primary_right.eligibility_status !== 'not_matched',
+  );
+  const usableCoverageCount = (hasActiveGovernmentRight ? 1 : 0) + policies.length;
   const nhsoDetail = registry?.entitlement.nhso_detail;
-  const healthPolicy = registry?.private_policies.find((p) => p.policy_type === 'HEALTH');
-  const lifePolicy = registry?.private_policies.find((p) => p.policy_type === 'LIFE');
+  const healthPolicy = policies.find((p) => p.policy_type === 'HEALTH');
+  const lifePolicy = policies.find((p) => p.policy_type === 'LIFE');
   const scheme = schemeFromResult(result);
 
 
@@ -108,15 +146,15 @@ export default function ResultsPage() {
 
       {/* Hero */}
       <section className="relative w-full overflow-hidden bg-[#eaf4ff] py-10 sm:py-14 print:bg-white">
-        <div className="pointer-events-none absolute -right-20 -top-32 size-80 rounded-full bg-[#9be8fd]/50 blur-2xl" />
-        <div className="pointer-events-none absolute -left-20 -top-32 size-80 rounded-full bg-[#9be8fd]/30 blur-2xl" />
+        <div className="pointer-events-none absolute -right-20 -top-32 size-80 rounded-full bg-cyan-200/50 blur-2xl" />
+        <div className="pointer-events-none absolute -left-20 -top-32 size-80 rounded-full bg-cyan-200/30 blur-2xl" />
         <div className="pointer-events-none absolute bottom-0 right-[18%] size-44 rounded-full bg-white/70 blur-xl" />
-        <div className="relative mx-auto max-w-[1440px] px-4 text-center sm:px-8">
+        <div className="relative mx-auto max-w-360 px-4 text-center sm:px-8">
           <div className="flex flex-wrap items-center justify-center gap-2">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-[#e8f1ff] px-3 py-1 text-xs font-semibold text-[#115af2]">
               <CheckCircle2 className="size-3.5" /> ตรวจสอบข้อมูลสำเร็จ
             </span>
-            <span className="rounded-full bg-[#f5f5f7] px-3 py-1 text-xs font-semibold text-[#424245]">พบ {1 + policies.length} รายการ</span>
+            <span className="rounded-full bg-[#f5f5f7] px-3 py-1 text-xs font-semibold text-[#424245]">พบสิทธิที่ใช้ได้ {usableCoverageCount} รายการ</span>
             <span className="rounded-full bg-white/80 px-3 py-1 text-xs font-medium text-[#6e6e73]">ข้อมูลสาธิต</span>
           </div>
           <h1 className="apple-headline mt-5 text-4xl sm:text-5xl">สิทธิและความคุ้มครอง<br />ของคุณ</h1>
@@ -127,7 +165,7 @@ export default function ResultsPage() {
           )}
 
           {/* Pill Tabs */}
-          <div className="mt-7 inline-flex gap-1 rounded-full bg-white/70 p-1 shadow-sm ring-1 ring-black/[0.06] backdrop-blur-sm">
+          <div className="mt-7 inline-flex gap-1 rounded-full bg-white/70 p-1 shadow-sm ring-1 ring-black/6 backdrop-blur-sm">
             <button
               type="button"
               onClick={() => setActiveTab('rights')}
@@ -140,34 +178,33 @@ export default function ResultsPage() {
               onClick={() => setActiveTab('estimate')}
               className={`rounded-full px-5 py-2 text-sm font-semibold transition-all ${activeTab === 'estimate' ? 'bg-[#115af2] text-white shadow' : 'text-[#424245] hover:text-[#1d1d1f]'}`}
             >
-              คำนวณค่ารักษา
+              ประเมินค่าใช้จ่าย
             </button>
           </div>
         </div>
       </section>
 
-      {/* ── Tab: สิทธิ & ความคุ้มครอง ── */}
-      {activeTab === 'rights' && (
-        <main className="relative z-10 mx-auto w-full max-w-[1440px] space-y-6 px-4 py-8 sm:px-8 sm:py-12 print:max-w-none print:p-0">
+      {/* ── Results shared content area ── */}
+      <main className={`relative z-10 mx-auto w-full max-w-360 space-y-6 px-4 sm:px-8 print:max-w-none print:p-0 ${activeTab === 'estimate' ? 'pt-6 pb-0 sm:pt-8 sm:pb-0' : 'py-8 sm:py-12'}`}>
 
-          {registry && (
+          {activeTab === 'rights' && registry && (
             <section className="bg-white px-1 py-8 sm:px-4 sm:py-10">
               <div>
                 <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                   <div>
-                    <p className="text-xs font-semibold text-[#115af2]">สิทธิและกรมธรรม์ที่ตรวจพบ</p>
-                    <h2 className="mt-1 text-2xl font-semibold text-[#1d1d1f]">ตารางความคุ้มครองของคุณ</h2>
-                    <p className="mt-2 text-xs text-[#6e6e73]">กดรายการในตารางเพื่อดูข้อมูลสิทธิ หน่วยบริการ และเงื่อนไขฉบับเต็ม</p>
+                    <p className="text-xs font-semibold text-[#115af2]">สิทธิที่ยืนยันว่าใช้งานได้</p>
+                    <h2 className="mt-1 text-2xl font-semibold text-[#1d1d1f]">สิทธิและความคุ้มครองของคุณ</h2>
+                    <p className="mt-2 text-xs text-[#6e6e73]">แสดงเฉพาะสิทธิที่มีสถานะใช้งานอยู่ กดแต่ละรายการเพื่อดูหน่วยบริการและเงื่อนไข</p>
                   </div>
                   <Link
                     href={`/search?from=results&q=${encodeURIComponent(`ช่วยอธิบายสิทธิ ${registry.entitlement.scheme_name} และบอกเอกสารกับขั้นตอนที่ควรทำต่อ`)}`}
-                    className="inline-flex h-10 shrink-0 items-center justify-center gap-2 self-start rounded-full bg-[#115af2] px-5 text-xs font-semibold text-white transition hover:bg-[#1a7bf0] sm:self-auto"
+                    className="inline-flex h-10 shrink-0 items-center justify-center gap-2 self-start rounded-full bg-[#115af2] px-5 text-xs font-semibold text-white transition hover:bg-cyan-600 sm:self-auto"
                   >
                     <Sparkles className="size-4" /> ถาม AI จากผลนี้
                   </Link>
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[980px] border-separate border-spacing-0 text-left">
+                  <table className="w-full min-w-245 border-separate border-spacing-0 text-left">
                     <thead>
                       <tr className="bg-[#072b77] text-white">
                         <th className="px-4 py-3 text-xs font-semibold">ประเภท</th>
@@ -180,8 +217,8 @@ export default function ResultsPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      <tr
-                        className="cursor-pointer bg-[#eef5ff] transition hover:bg-[#dfeeff] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#115af2]"
+                      {hasActiveGovernmentRight && <tr
+                        className="cursor-pointer bg-[#eef5ff] transition hover:bg-[#dfeeff] focus-visible:outline focus-visible:outline-offset-2px focus-visible:outline-[#115af2]"
                         tabIndex={0}
                         onClick={() => setSelectedCoverage({ kind: 'government' })}
                         onKeyDown={(event) => {
@@ -196,13 +233,13 @@ export default function ResultsPage() {
                         <td className="px-4 py-4 text-xs text-[#424245]">{result.primary_right.responsible_agency || 'หน่วยงานเจ้าของสิทธิ'}</td>
                         <td className="px-4 py-4 font-mono text-xs text-[#115af2]">{registry.entitlement.scheme_code}</td>
                         <td className="max-w-72 px-4 py-4 text-xs leading-relaxed text-[#424245]">{result.primary_right.coverage_summary}</td>
-                        <td className="px-4 py-4"><span className="text-xs font-semibold text-[#115af2]">{registry.entitlement.status === 'ACTIVE' ? 'มีสิทธิ' : 'รอยืนยัน'}</span></td>
+                        <td className="px-4 py-4"><span className="text-xs font-semibold text-emerald-700">ใช้สิทธิได้</span></td>
                         <td className="px-4 py-4 text-right"><span className="inline-flex items-center gap-1 text-xs font-semibold text-[#115af2]"><Eye className="size-3.5" /> ดูรายละเอียด</span></td>
-                      </tr>
+                      </tr>}
                       {policies.map((policy, index) => (
                         <tr
                           key={policy.policy_number_masked}
-                          className={`${index % 2 === 0 ? 'bg-white' : 'bg-[#f7f9fc]'} cursor-pointer transition hover:bg-[#eef5ff] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#115af2]`}
+                          className={`${index % 2 === 0 ? 'bg-white' : 'bg-[#f7f9fc]'} cursor-pointer transition hover:bg-[#eef5ff] focus-visible:outline focus-visible:outline-offset-2px focus-visible:outline-[#115af2]`}
                           tabIndex={0}
                           onClick={() => setSelectedCoverage({ kind: 'policy', policy })}
                           onKeyDown={(event) => {
@@ -217,10 +254,15 @@ export default function ResultsPage() {
                           <td className="px-4 py-4 text-xs text-[#424245]">{policy.insurer_name}</td>
                           <td className="px-4 py-4 font-mono text-xs font-semibold text-[#115af2]">{policy.policy_number_masked}</td>
                           <td className="px-4 py-4 text-sm font-semibold text-[#1d1d1f]">{policy.sum_insured}</td>
-                          <td className="px-4 py-4"><span className="text-xs font-semibold text-[#115af2]">มีผลคุ้มครอง</span></td>
+                          <td className="px-4 py-4"><span className="text-xs font-semibold text-emerald-700">ใช้สิทธิได้</span></td>
                           <td className="px-4 py-4 text-right"><span className="inline-flex items-center gap-1 text-xs font-semibold text-[#115af2]"><Eye className="size-3.5" /> ดูรายละเอียด</span></td>
                         </tr>
                       ))}
+                      {usableCoverageCount === 0 && (
+                        <tr>
+                          <td colSpan={7} className="px-4 py-10 text-center text-sm text-[#6e6e73]">ยังไม่พบสิทธิที่มีสถานะใช้งานได้ในขณะนี้</td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -229,7 +271,7 @@ export default function ResultsPage() {
           )}
 
           {/* Medical certificate result */}
-          {medicalDocument && (() => {
+          {activeTab === 'estimate' && medicalDocument && (() => {
             const extracted = medicalDocument.result.extracted_data ?? {};
             const certificateData = extracted.certificate_data && typeof extracted.certificate_data === 'object'
               ? extracted.certificate_data as Record<string, unknown>
@@ -242,23 +284,13 @@ export default function ResultsPage() {
               .map(String).map((item) => item.trim()).filter(Boolean);
             const symptoms = (Array.isArray(certificateData.symptoms) ? certificateData.symptoms : [])
               .map(String).map((item) => item.trim()).filter(Boolean);
-            const equipment = (Array.isArray(extracted.matched_equipment) ? extracted.matched_equipment : [])
-              .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object');
             const provider = result?.registry_response?.entitlement.primary_provider;
-            const reimbursableItems = result
-              ? Array.from(new Set([
-                  ...result.primary_right.free_items,
-                  ...result.additional_rights
-                    .filter((r) => r.is_eligible)
-                    .flatMap((r) => r.eligible_equipment ?? []),
-                ]))
-              : [];
 
             return (
-              <section className="bg-white px-1 py-8 sm:px-4 sm:py-10">
+              <section className="bg-white px-1 pt-6 pb-0 sm:px-4 sm:pt-8 sm:pb-0">
                 <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                   <div>
-                    <p className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700">
+                    <p className="flex items-center gap-1.5 text-xs font-semibold text-cyan-700">
                       <FileCheck2 className="size-3.5" /> ผลจากใบรับรองแพทย์
                     </p>
                     <h2 className="mt-1 text-2xl font-semibold text-[#1d1d1f]">ผลเบื้องต้นจากเอกสาร</h2>
@@ -266,14 +298,14 @@ export default function ResultsPage() {
                   </div>
                   <Link
                     href={`/search?from=results&q=${encodeURIComponent('ช่วยอธิบายผลจากใบรับรองแพทย์ สิทธิ โรงพยาบาล ค่าใช้จ่าย และอุปกรณ์ที่ยืมได้ของฉัน')}`}
-                    className="inline-flex h-10 shrink-0 items-center justify-center gap-2 self-start rounded-full bg-[#115af2] px-5 text-xs font-semibold text-white transition hover:bg-[#1a7bf0] sm:self-auto"
+                    className="inline-flex h-10 shrink-0 items-center justify-center gap-2 self-start rounded-full bg-[#115af2] px-5 text-xs font-semibold text-white transition hover:bg-cyan-600 sm:self-auto"
                   >
                     <Sparkles className="size-4" /> ถาม AI จากผลนี้
                   </Link>
                 </div>
 
-                <dl className="grid gap-x-6 border-t border-black/[0.08] sm:grid-cols-2 lg:grid-cols-4">
-                  <div className="border-b border-black/[0.08] py-4">
+                <dl className="grid gap-x-6 border-t border-black/8 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="border-b border-black/8 py-4">
                     <dt className="flex items-center gap-2 text-xs font-semibold text-[#6e6e73]">
                       <Activity className="size-4 text-[#115af2]" /> การวินิจฉัย
                     </dt>
@@ -284,7 +316,7 @@ export default function ResultsPage() {
                       <p className="mt-1 text-xs leading-relaxed text-[#6e6e73]">อาการ: {symptoms.join(', ')}</p>
                     )}
                   </div>
-                  <div className="border-b border-black/[0.08] py-4">
+                  <div className="border-b border-black/8 py-4">
                     <dt className="flex items-center gap-2 text-xs font-semibold text-[#6e6e73]">
                       <Building2 className="size-4 text-[#115af2]" /> โรงพยาบาลตามสิทธิ
                     </dt>
@@ -293,7 +325,7 @@ export default function ResultsPage() {
                       <p className="mt-1 text-xs text-[#6e6e73]">รหัส {provider.hcode} · จังหวัด{provider.province}</p>
                     )}
                   </div>
-                  <div className="border-b border-black/[0.08] py-4">
+                  <div className="border-b border-black/8 py-4">
                     <dt className="flex items-center gap-2 text-xs font-semibold text-[#6e6e73]">
                       <WalletCards className="size-4 text-[#115af2]" /> สิทธิหลัก
                     </dt>
@@ -301,106 +333,122 @@ export default function ResultsPage() {
                       {result?.primary_right.scheme_name || '—'}
                     </dd>
                   </div>
-                  <div className="border-b border-black/[0.08] py-4">
+                  <div className="border-b border-black/8 py-4">
                     <dt className="flex items-center gap-2 text-xs font-semibold text-[#6e6e73]">
-                      <WalletCards className="size-4 text-[#115af2]" /> ประมาณค่าใช้จ่าย
+                      <WalletCards className="size-4 text-[#115af2]" /> แหล่งข้อมูลประเมิน
                     </dt>
-                    <dd className="mt-1 text-sm font-semibold text-[#1d1d1f]">
-                      {result?.cost_planning?.estimated_out_of_pocket || '—'}
-                    </dd>
-                    {result?.cost_planning && (
-                      <p className="mt-1 text-xs text-emerald-700">
-                        มูลค่าสิทธิโดยประมาณ {result.cost_planning.total_estimated_benefit_value}
-                      </p>
-                    )}
+                    <dd className="mt-1 text-sm font-semibold text-[#1d1d1f]">ผลวิเคราะห์จาก AI OCR</dd>
+                    <p className="mt-1 text-xs text-emerald-700">ใช้โรค อาการ และคำแนะนำจากเอกสารคำนวณต่อด้านล่าง</p>
                   </div>
                 </dl>
 
-                {reimbursableItems.length > 0 && (
-                  <div className="mt-5 border-b border-black/[0.08] pb-5">
-                    <p className="flex items-center gap-2 text-xs font-semibold text-[#6e6e73]">
-                      <CheckCircle2 className="size-4 text-emerald-700" /> รายการที่อาจเบิกได้
-                    </p>
-                    <p className="mt-1 text-sm leading-relaxed text-[#1d1d1f]">{reimbursableItems.join(' · ')}</p>
-                  </div>
-                )}
-
-                <div className="mt-5">
-                  <p className="flex items-center gap-2 text-xs font-semibold text-[#6e6e73]">
-                    <PackageCheck className="size-4 text-[#115af2]" /> อุปกรณ์ที่สัมพันธ์กับอาการ
-                  </p>
-                  {equipment.length > 0 ? (
-                    <ul className="mt-3 divide-y divide-black/[0.08] border-y border-black/[0.08]">
-                      {equipment.map((item, index) => {
-                        const itemName = String(item.item ?? 'อุปกรณ์ทางการแพทย์');
-                        const agency = String(item.agency ?? 'หน่วยงานตามสิทธิ');
-                        const howToClaim = String(item.how_to_claim ?? 'ติดต่อหน่วยบริการเพื่อประเมิน');
-                        const canBorrow = /ยืม|ศูนย์ยืม/i.test(`${agency} ${howToClaim}`);
-                        return (
-                          <li key={`${itemName}-${index}`} className="py-4 text-sm">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <strong className="text-[#1d1d1f]">{itemName}</strong>
-                              <span className={`rounded-md px-2 py-0.5 text-[11px] font-semibold ${canBorrow ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
-                                {canBorrow ? 'ยืมได้' : 'ต้องให้หน่วยงานประเมิน'}
-                              </span>
-                            </div>
-                            <p className="mt-1 text-xs leading-relaxed text-[#6e6e73]">{agency} · {howToClaim}</p>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  ) : (
-                    <p className="mt-2 text-sm text-[#6e6e73]">ไม่พบอุปกรณ์ที่จำเป็นจากอาการในเอกสารนี้</p>
-                  )}
-                </div>
-
-                <p className="mt-4 text-[11px] leading-relaxed text-amber-700">สิทธิ โรงพยาบาล และราคาเป็นผลจากระบบจำลอง ต้องยืนยันกับหน่วยงานหรือสถานพยาบาลก่อนใช้จริง</p>
               </section>
             );
           })()}
 
-          {registry && <NearestHospitals schemeCode={registry.entitlement.scheme_code} primaryProviderName={registry.entitlement.primary_provider.name} />}
+          {activeTab === 'rights' && registry && hasActiveGovernmentRight && (
+            <NearestHospitals
+              schemeCode={registry.entitlement.scheme_code}
+              schemeName={registry.entitlement.scheme_name}
+              primaryProvider={registry.entitlement.primary_provider}
+              referralProvider={nhsoDetail?.referral_provider}
+            />
+          )}
 
-          <div className="relative z-10 print:max-w-none print:p-0">
-            <p className="rounded-2xl border border-amber-200/80 bg-amber-50/80 px-4 py-3 text-[11px] leading-relaxed text-amber-950"><strong>ข้อมูลสาธิต:</strong> ระบบยังไม่ได้เชื่อมข้อมูลรายบุคคลจริงจากหน่วยงานรัฐ บริษัทประกัน หรือรายชื่อโรงพยาบาล กรุณายืนยันข้อมูลก่อนใช้บริการจริง</p>
-          </div>
-        </main>
-      )}
+          {activeTab === 'rights' && (
+            <div className="relative z-10 print:max-w-none print:p-0">
+              <p className="rounded-2xl border border-amber-200/80 bg-amber-50/80 px-4 py-3 text-[11px] leading-relaxed text-amber-950"><strong>ข้อมูลสาธิต:</strong> ระบบยังไม่ได้เชื่อมข้อมูลรายบุคคลจริงจากหน่วยงานรัฐ บริษัทประกัน หรือรายชื่อโรงพยาบาล กรุณายืนยันข้อมูลก่อนใช้บริการจริง</p>
+            </div>
+          )}
+      </main>
 
-      {/* ── Tab: คำนวณค่ารักษา ── */}
+      {/* ── Tab: ประเมินค่าใช้จ่าย ── */}
       {activeTab === 'estimate' && (
-        <main className="relative z-10 pb-12">
-          <div className="mx-auto max-w-4xl px-4 pt-8 text-center sm:px-8">
-            <p className="apple-eyebrow">ระบบวิเคราะห์ค่ารักษา CarePulse</p>
-            <h2 className="apple-headline mt-3 text-3xl sm:text-4xl">จาก &ldquo;มีสิทธิอะไร&rdquo;<br /><span className="text-[#115af2]">สู่ &ldquo;ต้องจ่ายจริงเท่าไร&rdquo;</span></h2>
-            <p className="apple-subhead mx-auto mt-4 max-w-3xl text-sm sm:text-base">เลือกการรักษาและประเภทโรงพยาบาล แล้วระบบจะแสดงยอดที่สิทธิและประกันช่วยจ่าย พร้อมยอดที่เหลือต้องจ่ายเองอย่างชัดเจน</p>
+        <main className="relative z-10">
+          <div className="mx-auto -mt-4 w-full max-w-360 sm:-mt-5">
+            <CostEstimator
+              initialScheme={scheme}
+              detectedSchemeName={registry?.entitlement.scheme_name}
+              detectedSchemeStatus={registry?.entitlement.status || 'มีสิทธิใช้งาน (ACTIVE)'}
+              primaryProvider={registry?.entitlement.primary_provider ? {
+                name: registry.entitlement.primary_provider.name,
+                hcode: registry.entitlement.primary_provider.hcode,
+                province: registry.entitlement.primary_provider.province,
+              } : undefined}
+              medicalDocumentDiagnosis={docDiagnoses[0]}
+              allDiagnoses={docDiagnoses}
+              medicalOcrContext={medicalOcrContext ?? undefined}
+              privateHealthPolicy={healthPolicy ? { planName: healthPolicy.plan_name, sumInsured: healthPolicy.sum_insured } : undefined}
+              lifePolicyName={lifePolicy?.plan_name}
+            />
           </div>
-          <CostEstimator
-            initialScheme={scheme}
-            detectedSchemeName={registry?.entitlement.scheme_name}
-            detectedSchemeStatus={registry?.entitlement.status || 'มีสิทธิใช้งาน (ACTIVE)'}
-            primaryProvider={registry?.entitlement.primary_provider ? {
-              name: registry.entitlement.primary_provider.name,
-              hcode: registry.entitlement.primary_provider.hcode,
-              province: registry.entitlement.primary_provider.province,
-            } : undefined}
-            medicalDocumentDiagnosis={docDiagnoses[0]}
-            allDiagnoses={docDiagnoses}
-            privateHealthPolicy={healthPolicy ? { planName: healthPolicy.plan_name, sumInsured: healthPolicy.sum_insured } : undefined}
-            lifePolicyName={lifePolicy?.plan_name}
-          />
+          {medicalDocument && (
+            <section className="mx-auto w-full max-w-360 px-4 pb-4 sm:px-8 lg:px-10 2xl:px-14">
+              <div className="rounded-[28px] border border-black/8 bg-white p-6 shadow-sm sm:p-8">
+                <details>
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-base font-semibold text-[#1d1d1f] marker:hidden">
+                    <span className="flex items-center gap-2"><PackageCheck className="size-5 text-[#115af2]" /> รายการเบิกได้และอุปกรณ์</span>
+                    <span className="shrink-0 rounded-full bg-[#eef5ff] px-3 py-1 text-sm font-semibold text-[#115af2]">ดูรายละเอียด</span>
+                  </summary>
+                  <div className="mt-5">
+                    {medicalBenefits.reimbursableItems.length > 0 && (
+                      <div className="border-b border-black/8 pb-6">
+                        <h2 className="flex items-center gap-2 text-xl font-semibold text-[#1d1d1f]">
+                          <CheckCircle2 className="size-5 text-emerald-700" /> รายการที่อาจเบิกได้
+                        </h2>
+                        <p className="mt-3 text-sm leading-relaxed text-[#424245]">{medicalBenefits.reimbursableItems.join(' · ')}</p>
+                      </div>
+                    )}
+
+                    <div className={medicalBenefits.reimbursableItems.length > 0 ? 'pt-6' : ''}>
+                      <h2 className="flex items-center gap-2 text-xl font-semibold text-[#1d1d1f]">
+                        <PackageCheck className="size-5 text-[#115af2]" /> อุปกรณ์ที่สัมพันธ์กับอาการ
+                      </h2>
+                      {medicalBenefits.equipment.length > 0 ? (
+                        <ul className="mt-4 divide-y divide-black/8 border-y border-black/8">
+                          {medicalBenefits.equipment.map((item, index) => {
+                            const itemName = String(item.item ?? 'อุปกรณ์ทางการแพทย์');
+                            const agency = String(item.agency ?? 'หน่วยงานตามสิทธิ');
+                            const howToClaim = String(item.how_to_claim ?? 'ติดต่อหน่วยบริการเพื่อประเมิน');
+                            const canBorrow = /ยืม|ศูนย์ยืม/i.test(`${agency} ${howToClaim}`);
+                            return (
+                              <li key={`${itemName}-${index}`} className="py-5 text-sm">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <strong className="text-base text-[#1d1d1f]">{itemName}</strong>
+                                  <span className={`rounded-md px-2.5 py-1 text-sm font-semibold ${canBorrow ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+                                    {canBorrow ? 'ยืมได้' : 'ต้องให้หน่วยงานประเมิน'}
+                                  </span>
+                                </div>
+                                <p className="mt-2 text-sm leading-relaxed text-[#6e6e73]">{agency} · {howToClaim}</p>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      ) : (
+                        <p className="mt-3 text-sm text-[#6e6e73]">ไม่พบอุปกรณ์ที่จำเป็นจากอาการในเอกสารนี้</p>
+                      )}
+                    </div>
+
+                    <p className="mt-5 rounded-2xl bg-amber-50 px-4 py-3 text-sm leading-relaxed text-amber-800">
+                      สิทธิ โรงพยาบาล และราคาเป็นผลจากระบบจำลอง ต้องยืนยันกับหน่วยงานหรือสถานพยาบาลก่อนใช้จริง
+                    </p>
+                  </div>
+                </details>
+              </div>
+            </section>
+          )}
         </main>
       )}
 
       {/* Coverage detail drawer */}
       {registry && selectedCoverage && (
-        <div className="fixed inset-0 z-[100] flex items-end justify-center bg-[#072b77]/55 p-0 backdrop-blur-sm sm:items-center sm:p-6" onMouseDown={(event) => {
+        <div className="fixed inset-0 z-100 flex items-end justify-center bg-[#072b77]/55 p-0 backdrop-blur-sm sm:items-center sm:p-6" onMouseDown={(event) => {
           if (event.target === event.currentTarget) setSelectedCoverage(null);
         }}>
           <section role="dialog" aria-modal="true" aria-labelledby="coverage-detail-title" className="max-h-[90vh] w-full overflow-y-auto bg-white shadow-2xl sm:max-w-3xl sm:rounded-[28px]">
             <header className="sticky top-0 z-10 flex items-start justify-between gap-4 bg-[#072b77] px-6 py-5 text-white sm:px-8 sm:py-6">
               <div>
-                <p className="text-xs font-semibold text-[#9be8fd]">{selectedCoverage.kind === 'government' ? 'รายละเอียดสิทธิภาครัฐ' : selectedCoverage.policy.policy_type === 'LIFE' ? 'รายละเอียดประกันชีวิต' : 'รายละเอียดประกันสุขภาพ'}</p>
+                <p className="text-xs font-semibold text-cyan-200">{selectedCoverage.kind === 'government' ? 'รายละเอียดสิทธิภาครัฐ' : selectedCoverage.policy.policy_type === 'LIFE' ? 'รายละเอียดประกันชีวิต' : 'รายละเอียดประกันสุขภาพ'}</p>
                 <h2 id="coverage-detail-title" className="mt-1 text-xl font-semibold sm:text-2xl">{selectedCoverage.kind === 'government' ? registry.entitlement.scheme_name : selectedCoverage.policy.plan_name}</h2>
               </div>
               <button type="button" onClick={() => setSelectedCoverage(null)} className="flex size-10 shrink-0 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20" aria-label="ปิดรายละเอียด">
@@ -468,7 +516,7 @@ export default function ResultsPage() {
               )}
 
               <div className="flex justify-end">
-                <button type="button" onClick={() => setSelectedCoverage(null)} className="h-10 rounded-full bg-[#115af2] px-5 text-sm font-semibold text-white hover:bg-[#1a7bf0]">ปิดรายละเอียด</button>
+                <button type="button" onClick={() => setSelectedCoverage(null)} className="h-10 rounded-full bg-[#115af2] px-5 text-sm font-semibold text-white hover:bg-cyan-600">ปิดรายละเอียด</button>
               </div>
             </div>
           </section>

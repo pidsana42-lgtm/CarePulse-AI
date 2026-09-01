@@ -32,7 +32,7 @@ export function SchemeChecker() {
         <div
           role="radiogroup"
           aria-label="เลือกสิทธิรักษาพยาบาล"
-          className="mb-8 grid grid-cols-2 gap-3 md:grid-cols-4"
+          className="mb-8 grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 md:grid-cols-4"
         >
           {schemes.map((s) => {
             const Icon = schemeIcons[s.id]

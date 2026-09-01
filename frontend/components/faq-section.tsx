@@ -51,12 +51,12 @@ export function FaqSection() {
                 {f.q}
                 <span
                   aria-hidden="true"
-                  className="flex size-7 shrink-0 items-center justify-center rounded-full bg-black/[0.04] text-slate-600 font-bold transition-transform duration-300 group-open:rotate-45 group-open:bg-cyan-600 group-open:text-white"
+                  className="flex size-7 shrink-0 items-center justify-center rounded-full bg-black/4 text-slate-600 font-bold transition-transform duration-300 group-open:rotate-45 group-open:bg-cyan-600 group-open:text-white"
                 >
                   +
                 </span>
               </summary>
-              <p className="mt-4 text-xs sm:text-sm leading-relaxed text-slate-600 font-medium pt-3 border-t border-black/[0.04]">
+              <p className="mt-4 text-xs sm:text-sm leading-relaxed text-slate-600 font-medium pt-3 border-t border-black/4">
                 {f.a}
               </p>
             </details>

@@ -93,7 +93,7 @@ export default function CameraCapture({ onImagesCaptured, onReset, isLoading = f
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
             {documents.map((document, index) => (
               <article key={document.id} className="relative overflow-hidden rounded-2xl border border-black/[0.08] bg-white">
                 <div className="aspect-[4/3] bg-[#f5f5f7]">

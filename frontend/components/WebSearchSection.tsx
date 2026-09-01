@@ -44,7 +44,7 @@ export function WebSearchSection() {
           }}
           className="liquid-glass rounded-[32px] p-2.5 sm:p-3 flex items-center gap-2.5 shadow-2xl border border-white/90"
         >
-          <div className="size-10 rounded-2xl bg-gradient-to-tr from-cyan-500 via-cyan-500 to-cyan-700 flex items-center justify-center text-white shrink-0 shadow-md">
+          <div className="size-10 rounded-2xl bg-linear-to-tr from-cyan-500 via-cyan-500 to-cyan-700 flex items-center justify-center text-white shrink-0 shadow-md">
             <Bot className="w-5 h-5" />
           </div>
           <input

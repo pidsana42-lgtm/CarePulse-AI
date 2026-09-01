@@ -1,37 +1,8 @@
 'use client'
 
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react'
-import {
-  BrainCircuit,
-  Camera,
-  CheckCircle2,
-  FileImage,
-  ImagePlus,
-  Info,
-  Loader2,
-  ScanLine,
-  Wallet,
-  PiggyBank,
-  Receipt,
-  ShieldCheck,
-  X,
-  FileText,
-  Sparkles,
-  Building2,
-  Edit3,
-  ListFilter,
-  Activity,
-} from 'lucide-react'
-import {
-  schemes,
-  treatments,
-  hospitalTypes,
-  getCoverage,
-  formatBaht,
-  type SchemeId,
-  type HospitalType,
-  type Treatment,
-} from '@/lib/health-data'
+import { BrainCircuit, CheckCircle2, Info, Loader2, Wallet, PiggyBank, Receipt, ShieldCheck, X, FileText, Sparkles, Building2, Edit3, ListFilter,Activity } from 'lucide-react'
+import { schemes, treatments, hospitalTypes, getCoverage, formatBaht, type SchemeId, type HospitalType, type Treatment } from '@/lib/health-data'
 import { cn } from '@/lib/utils'
 import { askAiAdvisor, uploadDocument } from '@/lib/api'
 import { MarkdownText } from '@/components/markdown-text'
@@ -95,6 +66,15 @@ interface CostEstimatorProps {
   }
   medicalDocumentDiagnosis?: string
   allDiagnoses?: string[]
+  medicalOcrContext?: {
+    fileName: string
+    ocrConfidence: number
+    diagnoses: string[]
+    symptoms: string[]
+    recommendation?: string
+    detectedHospital?: string
+    aiClinicalSummary?: string
+  }
   privateHealthPolicy?: {
     planName: string
     sumInsured: string
@@ -109,6 +89,7 @@ export function CostEstimator({
   primaryProvider,
   medicalDocumentDiagnosis,
   allDiagnoses = [],
+  medicalOcrContext,
   privateHealthPolicy,
   lifePolicyName,
 }: CostEstimatorProps) {
@@ -123,6 +104,13 @@ export function CostEstimator({
     }
     return list.filter(Boolean)
   }, [allDiagnoses, medicalDocumentDiagnosis])
+
+  const ocrTreatmentContext = useMemo(() => [
+    ...docDiagnoses,
+    ...(medicalOcrContext?.symptoms ?? []),
+    medicalOcrContext?.recommendation,
+    medicalOcrContext?.aiClinicalSummary,
+  ].filter(Boolean).join(' '), [docDiagnoses, medicalOcrContext])
 
   const initialMode: TreatmentMode = docDiagnoses.length > 0 ? 'doc' : 'popular'
   const [treatmentMode, setTreatmentMode] = useState<TreatmentMode>(initialMode)
@@ -151,6 +139,7 @@ export function CostEstimator({
   useEffect(() => {
     if (docDiagnoses.length > 0 && !selectedDocDiagnosis) {
       setSelectedDocDiagnosis(docDiagnoses[0])
+      setTreatmentMode('doc')
     }
   }, [docDiagnoses, selectedDocDiagnosis])
 
@@ -161,15 +150,34 @@ export function CostEstimator({
   // Derive active treatment details
   const activeTreatment = useMemo((): Treatment => {
     if (treatmentMode === 'doc') {
-      const matched = matchTreatmentFromKeyword(selectedDocDiagnosis)
+      const matched = matchTreatmentFromKeyword(`${selectedDocDiagnosis} ${ocrTreatmentContext}`)
       if (matched) {
         return { ...matched, name: `${selectedDocDiagnosis} (${matched.name})` }
       }
+
+      if (/ผ่าตัด|หัตถการ|ส่องกล้อง|ดมยาสลบ|ยาสลบ|propofol|procedure|surgery|endoscop/i.test(ocrTreatmentContext)) {
+        return {
+          id: 'doc-procedure',
+          name: selectedDocDiagnosis || 'หัตถการที่ AI OCR ตรวจพบ',
+          note: 'ประมาณจากคำวินิจฉัยและคำแนะนำเกี่ยวกับหัตถการที่ AI OCR อ่านได้จากเอกสาร',
+          cost: { public: [10000, 50000], private: [30000, 150000] },
+        }
+      }
+
+      if (/ผู้ป่วยใน|นอนโรงพยาบาล|รับไว้รักษา|admit|inpatient/i.test(ocrTreatmentContext)) {
+        return {
+          id: 'doc-inpatient',
+          name: selectedDocDiagnosis || 'การรักษาแบบผู้ป่วยในที่ AI OCR ตรวจพบ',
+          note: 'ประมาณจากคำวินิจฉัยและข้อมูลการรับไว้รักษาที่ AI OCR อ่านได้จากเอกสาร',
+          cost: { public: [10000, 30000], private: [40000, 100000] },
+        }
+      }
+
+      const outpatient = treatments.find((t) => t.id === 'opd-common') ?? treatments[0]
       return {
-        id: 'doc-custom',
+        ...outpatient,
         name: selectedDocDiagnosis || 'การวินิจฉัยจากใบรับรองแพทย์',
-        note: 'ประเมินจากข้อบ่งชี้ทางการแพทย์ในใบรับรองแพทย์',
-        cost: { public: [20000, 50000], private: [60000, 150000] },
+        note: 'AI OCR ไม่พบหัตถการหรือการนอนโรงพยาบาล จึงประมาณด้วยฐานค่าตรวจรักษาผู้ป่วยนอก',
       }
     }
 
@@ -199,7 +207,7 @@ export function CostEstimator({
     }
 
     return treatments.find((t) => t.id === popularTreatmentId) ?? treatments[0]
-  }, [treatmentMode, selectedDocDiagnosis, customTreatmentName, customCostLow, customCostHigh, scanFileName, scannedAmount, popularTreatmentId])
+  }, [treatmentMode, selectedDocDiagnosis, ocrTreatmentContext, customTreatmentName, customCostLow, customCostHigh, scanFileName, scannedAmount, popularTreatmentId])
 
   const handleCostDocument = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -309,6 +317,12 @@ export function CostEstimator({
             `สิทธิภาครัฐ: ${schemeName}${providerInfo}`,
             `ประกันสุขภาพ: ${privatePolicyText}`,
             `การรักษา/การวินิจฉัย: ${activeTreatment.name}`,
+            ...(treatmentMode === 'doc' && medicalOcrContext ? [
+              `แหล่งข้อมูล: AI OCR จากไฟล์ ${medicalOcrContext.fileName} (ความมั่นใจ ${Math.round(medicalOcrContext.ocrConfidence * 100)}%)`,
+              `อาการจาก OCR: ${medicalOcrContext.symptoms.join(', ') || 'ไม่ระบุ'}`,
+              `คำแนะนำจากแพทย์ที่ OCR อ่านได้: ${medicalOcrContext.recommendation || 'ไม่ระบุ'}`,
+              `สถานพยาบาลในเอกสาร: ${medicalOcrContext.detectedHospital || 'ไม่ระบุ'}`,
+            ] : []),
             `ประเภทโรงพยาบาล: ${hospitalName}`,
             `ค่ารักษาโดยประมาณ: ${formatBaht(result.low)} - ${formatBaht(result.high)} บาท`,
             `สิทธิภาครัฐช่วยจ่าย: ${formatBaht(result.coveredLow)} - ${formatBaht(result.coveredHigh)} บาท`,
@@ -339,7 +353,7 @@ export function CostEstimator({
     }, 400)
     return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [schemeId, hospital, activeTreatment.id, includePrivatePolicy])
+  }, [schemeId, hospital, activeTreatment.name, includePrivatePolicy])
 
   return (
     <section
@@ -347,9 +361,9 @@ export function CostEstimator({
       className="estimate-standard relative scroll-mt-20 overflow-hidden py-8 sm:py-10"
     >
       <div className="w-full space-y-8 px-4 sm:px-8 lg:px-10 2xl:px-14">
-        <div className="grid gap-6 xl:grid-cols-12">
+        <div className="grid min-w-0 gap-6 xl:grid-cols-12">
           {/* ── Left Form Panel ── */}
-          <div className="flex flex-col gap-6 rounded-[32px] border border-black/[0.06] bg-white p-6 shadow-[0_16px_50px_-36px_rgba(7,43,119,0.45)] sm:p-8 xl:col-span-4">
+          <div className="min-w-0 flex flex-col gap-6 rounded-[32px] border border-black/6 bg-white p-6 shadow-[0_16px_50px_-36px_rgba(7,43,119,0.45)] sm:p-8 xl:col-span-4">
             
             {/* 1. สิทธิการรักษาของคุณ */}
             <div className="flex flex-col gap-2.5">
@@ -370,7 +384,7 @@ export function CostEstimator({
               </div>
 
               {detectedSchemeName && !showSchemeSelect ? (
-                <div className="rounded-2xl border border-cyan-200 bg-gradient-to-br from-[#eef5ff] to-cyan-50/50 p-4 shadow-xs">
+                <div className="rounded-2xl border border-cyan-200 bg-linear-to-br from-[#eef5ff] to-cyan-50/50 p-4 shadow-xs">
                   <div className="flex items-start gap-3">
                     <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-cyan-700 text-white shadow-xs">
                       <ShieldCheck className="size-5" />
@@ -402,7 +416,7 @@ export function CostEstimator({
                   aria-label="เลือกสิทธิรักษาพยาบาล"
                   value={schemeId}
                   onChange={(e) => setSchemeId(e.target.value as SchemeId)}
-                  className="h-12 w-full rounded-2xl border-2 border-black/[0.10] bg-white px-4 text-base font-bold text-slate-900 shadow-xs focus:outline-none focus:ring-4 focus:ring-cyan-500/20"
+                  className="h-12 w-full rounded-2xl border-2 border-black/10 bg-white px-4 text-base font-bold text-slate-900 shadow-xs focus:outline-none focus:ring-4 focus:ring-cyan-500/20"
                 >
                   {schemes.map((s) => (
                     <option key={s.id} value={s.id}>
@@ -421,7 +435,7 @@ export function CostEstimator({
               </span>
 
               {/* Mode Tabs */}
-              <div className="grid grid-cols-3 gap-1.5 rounded-2xl bg-[#f5f5f7] p-1.5 text-xs font-bold">
+              <div className="grid grid-cols-1 gap-1.5 rounded-2xl bg-[#f5f5f7] p-1.5 text-sm font-bold min-[420px]:grid-cols-3">
                 {docDiagnoses.length > 0 && (
                   <button
                     type="button"
@@ -470,9 +484,9 @@ export function CostEstimator({
               {/* Mode A: From Medical Document */}
               {treatmentMode === 'doc' && docDiagnoses.length > 0 && (
                 <div className="space-y-2.5 rounded-2xl border border-cyan-100 bg-[#eef5ff] p-4">
-                  <span className="flex items-center gap-1.5 text-xs font-bold text-cyan-800">
+                  <span className="flex items-center gap-1.5 text-sm font-bold text-cyan-800">
                     <Sparkles className="size-3.5 text-cyan-600" />
-                    พบคำวินิจฉัยจากใบรับรองแพทย์ ({docDiagnoses.length} รายการ)
+                    AI OCR พบคำวินิจฉัยจากใบรับรองแพทย์ ({docDiagnoses.length} รายการ)
                   </span>
                   <div className="flex flex-wrap gap-2">
                     {docDiagnoses.map((diag, idx) => (
@@ -481,10 +495,10 @@ export function CostEstimator({
                         type="button"
                         onClick={() => setSelectedDocDiagnosis(diag)}
                         className={cn(
-                          'rounded-xl px-3 py-2 text-xs font-bold transition text-left cursor-pointer',
+                          'rounded-xl px-3 py-2 text-sm font-bold transition text-left cursor-pointer',
                           selectedDocDiagnosis === diag
                             ? 'bg-cyan-700 text-white shadow-xs'
-                            : 'bg-white text-slate-700 hover:bg-cyan-50 border border-black/[0.06]'
+                            : 'bg-white text-slate-700 hover:bg-cyan-50 border border-black/6'
                         )}
                       >
                         {diag}
@@ -492,8 +506,18 @@ export function CostEstimator({
                     ))}
                   </div>
                   {activeTreatment.note && (
-                    <p className="text-xs text-slate-500 leading-relaxed pt-1">
+                    <p className="pt-1 text-sm leading-relaxed text-slate-600">
                       {activeTreatment.note}
+                    </p>
+                  )}
+                  {medicalOcrContext?.recommendation && (
+                    <p className="text-sm leading-relaxed text-slate-600">
+                      <strong className="text-slate-800">คำแนะนำที่อ่านได้:</strong> {medicalOcrContext.recommendation}
+                    </p>
+                  )}
+                  {medicalOcrContext?.detectedHospital && (
+                    <p className="text-sm leading-relaxed text-slate-600">
+                      <strong className="text-slate-800">สถานพยาบาลในเอกสาร:</strong> {medicalOcrContext.detectedHospital}
                     </p>
                   )}
                 </div>
@@ -501,7 +525,7 @@ export function CostEstimator({
 
               {/* Mode B: Custom Typed Treatment */}
               {treatmentMode === 'custom' && (
-                <div className="space-y-3 rounded-2xl border border-black/[0.08] bg-[#f9fafb] p-4">
+                <div className="space-y-3 rounded-2xl border border-black/8 bg-[#f9fafb] p-4">
                   <div>
                     <label className="block text-xs font-bold text-slate-700">ชื่อโรค / หัตถการที่ต้องการประมาณการ</label>
                     <input
@@ -509,10 +533,10 @@ export function CostEstimator({
                       placeholder="เช่น ผ่าตัดส่องกล้อง, ฟอกไต, เปลี่ยนข้อสะโพก"
                       value={customTreatmentName}
                       onChange={(e) => setCustomTreatmentName(e.target.value)}
-                      className="mt-1.5 h-11 w-full rounded-xl border border-black/[0.12] bg-white px-3.5 text-sm font-bold text-slate-900 outline-none focus:border-cyan-600 focus:ring-2 focus:ring-cyan-500/20"
+                      className="mt-1.5 h-11 w-full rounded-xl border border-black/12 bg-white px-3.5 text-sm font-bold text-slate-900 outline-none focus:border-cyan-600 focus:ring-2 focus:ring-cyan-500/20"
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 gap-2 min-[480px]:grid-cols-2">
                     <div>
                       <label className="block text-[11px] font-bold text-slate-600">ราคาขั้นต่ำ (บาท)</label>
                       <input
@@ -520,7 +544,7 @@ export function CostEstimator({
                         placeholder="15,000"
                         value={customCostLow}
                         onChange={(e) => setCustomCostLow(e.target.value)}
-                        className="mt-1 h-10 w-full rounded-xl border border-black/[0.12] bg-white px-3 text-xs font-bold text-slate-900 outline-none focus:border-cyan-600"
+                        className="mt-1 h-10 w-full rounded-xl border border-black/12 bg-white px-3 text-xs font-bold text-slate-900 outline-none focus:border-cyan-600"
                       />
                     </div>
                     <div>
@@ -530,7 +554,7 @@ export function CostEstimator({
                         placeholder="45,000"
                         value={customCostHigh}
                         onChange={(e) => setCustomCostHigh(e.target.value)}
-                        className="mt-1 h-10 w-full rounded-xl border border-black/[0.12] bg-white px-3 text-xs font-bold text-slate-900 outline-none focus:border-cyan-600"
+                        className="mt-1 h-10 w-full rounded-xl border border-black/12 bg-white px-3 text-xs font-bold text-slate-900 outline-none focus:border-cyan-600"
                       />
                     </div>
                   </div>
@@ -544,7 +568,7 @@ export function CostEstimator({
                     id="treatment-select"
                     value={popularTreatmentId}
                     onChange={(e) => setPopularTreatmentId(e.target.value)}
-                    className="h-12 w-full rounded-2xl border-2 border-black/[0.10] bg-white px-4 text-sm font-bold text-slate-900 shadow-xs focus:outline-none focus:ring-4 focus:ring-cyan-500/20"
+                    className="h-12 w-full rounded-2xl border-2 border-black/10 bg-white px-4 text-sm font-bold text-slate-900 shadow-xs focus:outline-none focus:ring-4 focus:ring-cyan-500/20"
                   >
                     {treatments.map((t) => (
                       <option key={t.id} value={t.id}>
@@ -622,7 +646,7 @@ export function CostEstimator({
               type="button"
               onClick={runAiEvaluation}
               disabled={aiLoading}
-              className="mt-2 flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-r from-cyan-600 to-[#115af2] px-6 text-base font-bold text-white shadow-lg transition-all hover:opacity-95 active:scale-[0.98] disabled:opacity-50 cursor-pointer"
+              className="mt-2 flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl bg-linear-to-r from-cyan-600 to-[#115af2] px-6 text-base font-bold text-white shadow-lg transition-all hover:opacity-95 active:scale-[0.98] disabled:opacity-50 cursor-pointer"
             >
               {aiLoading ? (
                 <>
@@ -639,47 +663,51 @@ export function CostEstimator({
           </div>
 
           {/* ── Right Result Dashboard Panel ── */}
-          <div className="flex flex-col gap-6 rounded-[32px] border border-black/[0.06] bg-white p-6 shadow-[0_16px_50px_-36px_rgba(7,43,119,0.45)] sm:p-8 xl:col-span-8">
+          <div className="min-w-0 flex flex-col gap-6 rounded-[32px] border border-black/6 bg-white p-6 shadow-[0_16px_50px_-36px_rgba(7,43,119,0.45)] sm:p-8 xl:col-span-8">
             <div className="space-y-6">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-black/[0.06] pb-4">
-                <div>
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-black/6 pb-4">
+                <div className="min-w-0">
                   <p className="text-xs font-black text-cyan-800">
-                    {result.usesScannedAmount ? 'ผลคำนวณจากยอดที่สแกนและยืนยัน' : 'ผลการประมาณการค่ารักษา'}
+                    {result.usesScannedAmount
+                      ? 'ผลคำนวณจากยอดที่สแกนและยืนยัน'
+                      : treatmentMode === 'doc'
+                        ? 'ผลประมาณการจาก AI OCR'
+                        : 'ผลการประมาณการค่ารักษา'}
                   </p>
-                  <h3 className="mt-1 text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">
+                  <h3 className="mt-1 wrap-break-words text-[clamp(1.35rem,3vw,1.875rem)] font-black leading-tight tracking-tight text-slate-950">
                     {activeTreatment.name}
                   </h3>
                   <p className="mt-0.5 text-xs text-slate-500 font-medium">
                     สถานพยาบาล: {hospitalTypes.find((h) => h.id === hospital)?.name} {hospital === 'public-registered' && primaryProvider ? `(${primaryProvider.name})` : ''}
                   </p>
                 </div>
-                <div className="rounded-2xl bg-[#eef5ff] px-4 py-2 text-right">
-                  <span className="block text-[11px] font-bold text-cyan-700">สัดส่วนความคุ้มครอง</span>
-                  <span className="text-xl font-black text-cyan-900">{pct}%</span>
+                <div className="flex shrink-0 items-center justify-between gap-3 rounded-2xl bg-[#eef5ff] px-4 py-2 sm:justify-end">
+                  <span className="text-sm font-bold leading-tight text-cyan-700">สัดส่วนความคุ้มครอง</span>
+                  <span className="shrink-0 whitespace-nowrap text-xl font-black text-cyan-900">{pct}%</span>
                 </div>
               </div>
 
               {/* 6-Column Summary Cards */}
-              <div className="overflow-x-auto pb-1">
+              <div className="pb-1">
                 <dl
                   aria-label="สรุปค่ารักษาและผู้รับผิดชอบค่าใช้จ่าย"
-                  className="grid min-w-[900px] grid-cols-6 overflow-hidden rounded-2xl border border-black/[0.08] bg-white text-xs"
+                  className="grid grid-cols-1 overflow-hidden rounded-2xl border border-black/8 bg-white text-sm min-[480px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-6"
                 >
-                  <div className="min-w-0 border-r border-black/[0.08] bg-[#f5f5f7] p-4">
+                  <div className="min-w-0 border-r border-black/8 bg-[#f5f5f7] p-4">
                     <dt className="flex items-center gap-1.5 font-bold text-slate-600">
                       <Receipt className="size-4 shrink-0 text-slate-500" /> ราคาการรักษา
                     </dt>
-                    <dd className="mt-2 whitespace-nowrap text-base font-black text-slate-950">
+                    <dd className="mt-2 wrap-break-words text-base font-black text-slate-950">
                       {formatBaht(result.low)} - {formatBaht(result.high)}
                     </dd>
                     <p className="mt-1 truncate text-[11px] text-slate-500">บาท (ประมาณการ)</p>
                   </div>
 
-                  <div className="min-w-0 border-r border-black/[0.08] bg-[#eef5ff] p-4">
+                  <div className="min-w-0 border-r border-black/8 bg-[#eef5ff] p-4">
                     <dt className="flex items-center gap-1.5 font-bold text-cyan-800">
                       <PiggyBank className="size-4 shrink-0 text-cyan-600" /> สิทธิรัฐช่วยจ่าย
                     </dt>
-                    <dd className="mt-2 whitespace-nowrap text-base font-black text-cyan-700">
+                    <dd className="mt-2 wrap-break-words text-base font-black text-cyan-700">
                       {formatBaht(result.coveredLow)} - {formatBaht(result.coveredHigh)}
                     </dd>
                     <p className="mt-1 truncate text-[11px] text-cyan-800" title={detectedSchemeName || schemes.find((s) => s.id === schemeId)?.name}>
@@ -687,11 +715,11 @@ export function CostEstimator({
                     </p>
                   </div>
 
-                  <div className="min-w-0 border-r border-black/[0.08] bg-[#eef5ff] p-4">
+                  <div className="min-w-0 border-r border-black/8 bg-[#eef5ff] p-4">
                     <dt className="flex items-center gap-1.5 font-bold text-cyan-800">
                       <ShieldCheck className="size-4 shrink-0 text-cyan-600" /> ประกันสุขภาพ
                     </dt>
-                    <dd className="mt-2 whitespace-nowrap text-base font-black text-cyan-700">
+                    <dd className="mt-2 wrap-break-words text-base font-black text-cyan-700">
                       {includePrivatePolicy && privateHealthPolicy
                         ? `${formatBaht(result.privateCoveredLow)} - ${formatBaht(result.privateCoveredHigh)}`
                         : '0 บาท'}
@@ -701,7 +729,7 @@ export function CostEstimator({
                     </p>
                   </div>
 
-                  <div className="min-w-0 border-r border-black/[0.08] bg-[#f5f5f7] p-4">
+                  <div className="min-w-0 border-r border-black/8 bg-[#f5f5f7] p-4">
                     <dt className="font-bold text-slate-600">ประเภทโรงพยาบาล</dt>
                     <dd className="mt-2 truncate text-base font-black text-slate-950" title={hospitalTypes.find((item) => item.id === hospital)?.name}>
                       {hospitalTypes.find((item) => item.id === hospital)?.name}
@@ -709,9 +737,9 @@ export function CostEstimator({
                     <p className="mt-1 text-[11px] text-slate-500">ฐานราคาที่ใช้</p>
                   </div>
 
-                  <div className="min-w-0 border-r border-black/[0.08] bg-[#dcfce7] p-4">
+                  <div className="min-w-0 border-r border-black/8 bg-[#dcfce7] p-4">
                     <dt className="font-black text-emerald-900">รวมช่วยจ่าย</dt>
-                    <dd className="mt-2 whitespace-nowrap text-base font-black text-emerald-800">
+                    <dd className="mt-2 wrap-break-words text-base font-black text-emerald-800">
                       {formatBaht(result.totalCoveredLow)} - {formatBaht(result.totalCoveredHigh)}
                     </dd>
                     <p className="mt-1 text-[11px] font-bold text-emerald-800">สิทธิรัฐ + ประกัน</p>
@@ -721,7 +749,7 @@ export function CostEstimator({
                     <dt className="flex items-center gap-1.5 font-black text-slate-800">
                       <Wallet className="size-4 shrink-0 text-slate-700" /> เหลือจ่ายเอง
                     </dt>
-                    <dd className="mt-2 whitespace-nowrap text-lg font-black text-slate-950">
+                    <dd className="mt-2 wrap-break-words text-lg font-black text-slate-950">
                       {result.outHigh === 0 ? '0 บาท' : `${formatBaht(result.outLow)} - ${formatBaht(result.outHigh)}`}
                     </dd>
                     <p className="mt-1 text-[11px] font-bold text-slate-700">หลังหักทุกสิทธิ</p>
@@ -740,17 +768,22 @@ export function CostEstimator({
                   aria-valuenow={pct}
                   aria-valuemin={0}
                   aria-valuemax={100}
-                  className="h-4 w-full overflow-hidden rounded-full bg-black/[0.06] p-0.5"
+                  className="h-4 w-full overflow-hidden rounded-full bg-black/6 p-0.5"
                 >
                   <div
-                    className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-[#115af2] transition-all duration-700 shadow-sm"
+                    className="h-full rounded-full bg-linear-to-r from-cyan-500 to-[#115af2] transition-all duration-700 shadow-sm"
                     style={{ width: `${pct}%` }}
                   />
                 </div>
               </div>
 
-              {/* Coordination of Benefits (ลำดับสิทธิทับซ้อน) */}
-              <div className="rounded-3xl bg-[#f5f5f7] p-5 sm:p-6 space-y-4">
+              <details className="rounded-3xl border border-black/8 bg-[#f8fafc] p-5 sm:p-6">
+                <summary className="flex cursor-pointer list-none items-center gap-2 text-base font-black text-[#1d1d1f] marker:hidden">
+                  <BrainCircuit className="size-5 text-cyan-600" /> ดูรายละเอียดการคำนวณและคำแนะนำจาก AI
+                </summary>
+                <div className="mt-4 space-y-4">
+                  {/* Coordination of Benefits (ลำดับสิทธิทับซ้อน) */}
+                  <div className="rounded-3xl bg-[#f5f5f7] p-5 sm:p-6 space-y-4">
                 <div>
                   <p className="text-xs font-bold text-[#115af2]">การจัดลำดับสิทธิทับซ้อน</p>
                   <h4 className="mt-0.5 text-base font-black text-[#1d1d1f]">ระบบเรียงผู้รับผิดชอบค่าใช้จ่ายตามข้อกฎหมาย</h4>
@@ -780,10 +813,10 @@ export function CostEstimator({
                     <span className="mt-1 block text-xs text-[#6e6e73]">ส่วนที่เหลือหลังหักความคุ้มครองครบ</span>
                   </div>
                 </div>
-              </div>
+                  </div>
 
-              {/* AI Evaluation Output Card */}
-              <div className="flex items-start gap-4 rounded-3xl bg-gradient-to-br from-[#eef5ff] to-cyan-50/40 p-6 border border-cyan-100/80 shadow-xs">
+                  {/* AI Evaluation Output Card */}
+                  <div className="flex items-start gap-4 rounded-3xl bg-linear-to-br from-[#eef5ff] to-cyan-50/40 p-6 border border-cyan-100/80 shadow-xs">
                 <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-white text-[#115af2] shadow-xs">
                   {aiLoading ? <Loader2 className="size-5 animate-spin text-cyan-600" /> : <BrainCircuit className="size-5 text-cyan-600" />}
                 </span>
@@ -812,7 +845,9 @@ export function CostEstimator({
                   )}
                   {aiError && <p className="text-xs font-bold text-amber-800">{aiError}</p>}
                 </div>
-              </div>
+                  </div>
+                </div>
+              </details>
 
             </div>
 

@@ -529,15 +529,15 @@ export default function AssessmentPage() {
 
         <div className="mx-auto mt-14 grid w-full border-y border-black/9 lg:grid-cols-[1.08fr_.92fr]">
           <form onSubmit={handleSubmit} className="py-9 lg:border-r lg:border-black/9 lg:pr-12 sm:py-12">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex items-center gap-3">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex min-w-0 items-center gap-3">
                 <span className="flex size-10 items-center justify-center rounded-full bg-[#e8f1ff] text-[#115af2]"><UserRound className="size-5" /></span>
                 <div>
                   <p className="apple-eyebrow">เริ่มตรวจสอบสิทธิ</p>
                   <h2 className="text-xl font-semibold text-[#1d1d1f]">ข้อมูลจากบัตรประชาชน</h2>
                 </div>
               </div>
-              <div className="flex shrink-0 flex-col items-end gap-1 text-right">
+              <div className="flex shrink-0 flex-col items-start gap-1 text-left sm:items-end sm:text-right">
                 <button type="button" onClick={useCivilServantDemoData} className="text-sm cursor-pointer font-semibold text-[#115af2] hover:underline">
                   ตัวอย่างสิทธิข้าราชการ
                 </button>
@@ -576,6 +576,11 @@ export default function AssessmentPage() {
                 </div>
                 {documentInputMode === 'manual' && (
                   <p className="mt-2 text-sm leading-relaxed text-[#6e6e73]">กรอกชื่อ–นามสกุลและเลขบัตรประชาชนในช่องด้านล่าง</p>
+                )}
+                {documentInputMode === 'upload' && (
+                  <div>
+                    <p className="mt-2 text-sm leading-relaxed text-[#6e6e73]">แนบรูปใบรับรองแพทย์หรือเอกสารทางการแพทย์</p>
+                  </div>
                 )}
               </div>
 

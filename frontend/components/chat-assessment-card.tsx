@@ -108,7 +108,7 @@ export default function ChatAssessmentCard() {
           </div>
 
           {/* Disability + Insurance toggles */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2">
             <div className="space-y-1.5">
               <label className="block text-xs font-black text-slate-700">บัตรคนพิการ (พม.)</label>
               <div className="grid grid-cols-2 gap-1.5">

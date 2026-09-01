@@ -306,6 +306,28 @@
   letter-spacing: 0.03em;
 }
 
+/* Keep every page usable at narrow widths and respect the reader's zoom level. */
+@media (max-width: 639px) {
+  .apple-page :is(p, span, strong, dt, dd, label, li, button, input, select, textarea) {
+    font-size: max(0.875rem, 0.875em);
+    overflow-wrap: anywhere;
+  }
+}
+
+.apple-page,
+.apple-page main,
+.apple-page section,
+.apple-page form,
+.apple-page article {
+  min-width: 0;
+}
+
+.apple-page img,
+.apple-page video,
+.apple-page iframe {
+  max-width: 100%;
+}
+
 .apple-headline {
   color: #1d1d1f;
   font-weight: 700;
@@ -329,11 +351,45 @@
 
 /* Keep the estimator's supporting copy aligned with the standard site scale. */
 .estimate-standard :is(p, span, strong, dt, label, input, select, button, li) {
-  font-size: 0.875rem;
+  font-size: clamp(0.875rem, 0.25rem + 1vw, 1rem);
 }
 
 .estimate-standard dd {
-  font-size: 1rem;
+  font-size: clamp(0.95rem, 0.5rem + 1.35vw, 1.125rem);
+  overflow-wrap: anywhere;
+}
+
+/* CarePulse palette: calm, high-contrast blues that remain legible for older users. */
+.apple-page {
+  color: #072b77;
+}
+
+.apple-page :is(.text-slate-950, .text-slate-900, .text-slate-800, .text-slate-700, [class~="text-[#1d1d1f]"], [class~="text-[#424245]"]) {
+  color: #072b77 !important;
+}
+
+.apple-page :is(.text-slate-600, .text-slate-500, .text-slate-400, [class~="text-[#6e6e73]"], [class~="text-[#86868b]"]) {
+  color: rgb(7 43 119 / 0.72) !important;
+}
+
+.apple-page :is(.bg-slate-50, .bg-slate-100, .bg-slate-200, [class~="bg-[#f5f5f7]"], [class~="bg-[#f7f9fc]"]) {
+  background-color: #f2fdff !important;
+}
+
+.apple-page :is(.text-emerald-700, .text-emerald-800, .text-emerald-900) {
+  color: #115af2 !important;
+}
+
+.apple-page :is(.bg-emerald-50, .bg-emerald-100, [class~="bg-[#dcfce7]"]) {
+  background-color: #9be8fd !important;
+}
+
+.apple-page :is(.text-amber-700, .text-amber-800, .text-amber-900, .text-amber-950) {
+  color: #072b77 !important;
+}
+
+.apple-page :is(.bg-amber-50, .bg-amber-100, [class~="bg-[#fff7e5]"]) {
+  background-color: #eef5ff !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
